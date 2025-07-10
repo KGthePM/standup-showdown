@@ -11,6 +11,12 @@
         <header>
             <h1>StandUp Showdown</h1>
             <p class="tagline">The comedy party game where everyone gets a chance to shine!</p>
+            
+            <!-- Sound Controls -->
+            <div class="sound-controls">
+                <button id="sound-toggle-btn" class="sound-btn" title="Toggle Sound">🔊</button>
+                <input type="range" id="volume-slider" min="0" max="100" value="70" class="volume-slider" title="Volume">
+            </div>
         </header>
         
         <!-- Landing Page -->
@@ -43,7 +49,9 @@
                 <div id="player-list"></div>
                 <button class="btn" id="start-game-btn">Start Game</button>
             </div>
-            <div class="audience"></div>
+            <div class="audience" id="audience-display">
+                <div class="audience-reaction" id="audience-reaction"></div>
+            </div>
         </section>
         
         <!-- Player Screen (Mobile) -->
@@ -54,9 +62,39 @@
                 <div id="game-controls"></div>
             </div>
         </section>
+        
+        <!-- Game Round Screens -->
+        <section class="main-section game-round" id="game-round-screen">
+            <div class="card">
+                <div class="round-info">
+                    <h3 id="round-title">Round 1: Setup Battle</h3>
+                    <p id="round-description">Write a setup for the given punchline</p>
+                </div>
+                
+                <div class="content-box">
+                    <div id="prompt-display"></div>
+                </div>
+                
+                <div id="answer-section" class="answer-form">
+                    <textarea id="joke-input" placeholder="Write your comedy gold here..." rows="3"></textarea>
+                    <button class="btn" id="submit-joke-btn">Submit Joke</button>
+                </div>
+                
+                <div id="voting-section" style="display: none;">
+                    <h4>Vote for your favorite:</h4>
+                    <div id="voting-options"></div>
+                </div>
+                
+                <div id="results-section" style="display: none;">
+                    <h4>Results:</h4>
+                    <div id="results-display"></div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="scripts/soundManager.js"></script>
     <script src="scripts/client.js"></script>
 </body>
 </html>

@@ -35,6 +35,92 @@ const ROUND_NAMES = {
 const TIMER_DURATION = 90; // seconds for writing
 const VOTING_DURATION = 30; // seconds for voting
 
+// Audience reaction thresholds and types
+const AUDIENCE_REACTIONS = {
+    CRICKETS: { 
+        threshold: 0, 
+        name: 'crickets',
+        message: '🦗 *crickets chirping*',
+        hostLine: "Well... that was... something. Moving on!"
+    },
+    MILD: { 
+        threshold: 0.2, 
+        name: 'mild',
+        message: '😊 *polite chuckles*',
+        hostLine: "Hey, I heard a laugh! Or was that a cough?"
+    },
+    MEDIUM: { 
+        threshold: 0.4, 
+        name: 'medium',
+        message: '😄 *genuine laughter*',
+        hostLine: "Now we're cooking! The audience is warming up!"
+    },
+    STRONG: { 
+        threshold: 0.6, 
+        name: 'strong',
+        message: '😂 *big laughs and applause*',
+        hostLine: "That's what I'm talking about! Comedy gold!"
+    },
+    STANDING_OVATION: { 
+        threshold: 0.8, 
+        name: 'ovation',
+        message: '🎉 *standing ovation*',
+        hostLine: "INCREDIBLE! Someone get this person a Netflix special!"
+    }
+};
+
+// Comedy host lines
+const HOST_LINES = {
+    gameStart: [
+        "Ladies and gentlemen, welcome to StandUp Showdown! I'm your host, and I've seen funnier things at a DMV, but let's see what you've got!",
+        "Welcome comedy legends! Or should I say... comedy leg-ends? Because some of these jokes might not have legs!",
+        "It's showtime! Remember, timing is everything in comedy. That's why I'm always late to parties!",
+        "Welcome to StandUp Showdown, where dreams come true and egos get bruised!"
+    ],
+    roundIntros: {
+        1: [
+            "Time for Setup Battle! Remember, a good setup is like a good relationship - it needs a strong foundation before the punchline hits!",
+            "Setup Battle begins! You'll get a punchline, you write the setup. It's like Jeopardy, but funny!",
+            "Round 1: Setup Battle! Show us how you get to these punchlines. GPS not included!"
+        ],
+        2: [
+            "Punchline Challenge is up! This is where we separate the comedians from the people who think they're funny at parties!",
+            "Time to deliver those punchlines! Remember, it's all about the delivery. Unlike my pizza, which never arrives!",
+            "Punchline Challenge! The setup is ready, now stick the landing!"
+        ],
+        3: [
+            "Full Joke Creation - no training wheels! Time to show us if you're Netflix special material or open mic nightmare!",
+            "The final round! Write a complete joke. This is your moment to shine... or crash and burn spectacularly!",
+            "Full Joke Creation! You've got a topic, now make us laugh! No pressure, but your comedy career depends on it!"
+        ]
+    },
+    betweenSubmissions: [
+        "While our comedians are crafting their masterpieces, did you hear about the mathematician who's afraid of negative numbers? He'll stop at nothing to avoid them!",
+        "Everyone's typing away! Remember, comedy is 10% inspiration and 90% desperation!",
+        "I can feel the creative energy! Or is that just the air conditioning?"
+    ],
+    votingStart: [
+        "Time to vote! Remember, you can't vote for yourself. That's like laughing at your own jokes... which I definitely don't do...",
+        "Voting time! Pick your favorite, and try not to play favorites. Unless it's really funny, then absolutely play favorites!",
+        "Let's see which jokes land and which ones... well, let's stay positive!"
+    ],
+    noVotes: [
+        "Ouch! Zero votes. But hey, bombing is a rite of passage in comedy! You're basically a pro now!",
+        "No votes, but don't worry - even Jerry Seinfeld bombed once. Well, probably more than once.",
+        "Zero votes? That's not a failure, that's avant-garde comedy! Very experimental!"
+    ],
+    winner: [
+        "And the winner is {name}! Someone call Netflix, we've got a star!",
+        "Congratulations to {name}! You've won the game and my respect, which is worth... well, nothing, but still!",
+        "{name} takes the crown! Your prize? The satisfaction of being funnier than your friends!"
+    ],
+    encouragement: [
+        "Great submission! I actually laughed, and my standards are pretty low!",
+        "That's the spirit! Keep them coming!",
+        "I see what you did there! Comedy genius or happy accident? We'll never know!"
+    ]
+};
+
 // Helper functions
 function generateRoomCode() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -43,6 +129,26 @@ function generateRoomCode() {
         result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     return result;
+}
+
+function getRandomHostLine(category) {
+    const lines = HOST_LINES[category];
+    if (Array.isArray(lines)) {
+        return lines[Math.floor(Math.random() * lines.length)];
+    }
+    return lines;
+}
+
+function getAudienceReaction(votes, totalPlayers) {
+    const votePercentage = votes / (totalPlayers - 1); // -1 because you can't vote for yourself
+    
+    let reaction = AUDIENCE_REACTIONS.CRICKETS;
+    for (const [key, value] of Object.entries(AUDIENCE_REACTIONS)) {
+        if (votePercentage >= value.threshold) {
+            reaction = value;
+        }
+    }
+    return reaction;
 }
 
 function createGameRoom() {
@@ -65,7 +171,8 @@ function createGameRoom() {
             votes: {}, // voting results
             timer: null
         },
-        scores: {} // player scores across all rounds
+        scores: {}, // player scores across all rounds
+        achievements: {} // track achievements per player
     });
 
     return roomCode;
@@ -107,18 +214,37 @@ function startRound(roomCode, roundNumber) {
 
     gameRoom.roundData.content = content;
 
-    // Send round data to all players
-    gameRoom.players.forEach((player, index) => {
-        io.to(player.id).emit('roundStarted', {
-            round: roundNumber,
-            roundName: ROUND_NAMES[roundNumber],
-            roundType: roundType,
-            content: content[index],
-            timeLimit: TIMER_DURATION
-        });
+    // Send host introduction for this round
+    const hostLine = getRandomHostLine(`roundIntros`)[roundNumber];
+    io.to(roomCode).emit('hostSpeaks', {
+        line: hostLine,
+        type: 'roundIntro'
     });
 
+    // Send round data to all players
+    setTimeout(() => {
+        gameRoom.players.forEach((player, index) => {
+            io.to(player.id).emit('roundStarted', {
+                round: roundNumber,
+                roundName: ROUND_NAMES[roundNumber],
+                roundType: roundType,
+                content: content[index],
+                timeLimit: TIMER_DURATION
+            });
+        });
+    }, 3000); // Give time for host line to be read
+
     console.log(`Round ${roundNumber} started in room ${roomCode} with ${gameRoom.players.length} players`);
+
+    // Send encouraging host line midway through
+    setTimeout(() => {
+        if (gameRoom.roundPhase === 'writing') {
+            io.to(roomCode).emit('hostSpeaks', {
+                line: getRandomHostLine('betweenSubmissions'),
+                type: 'encouragement'
+            });
+        }
+    }, TIMER_DURATION * 500); // Halfway through
 
     // Start writing timer
     gameRoom.roundData.timer = setTimeout(() => {
@@ -148,13 +274,21 @@ function startVotingPhase(roomCode) {
         playerId: playerId // keep for scoring but don't send to clients
     }));
 
+    // Send host voting introduction
+    io.to(roomCode).emit('hostSpeaks', {
+        line: getRandomHostLine('votingStart'),
+        type: 'voting'
+    });
+
     console.log(`Voting phase started in room ${roomCode} with ${submissions.length} submissions`);
 
-    // Send voting data to all players
-    io.to(roomCode).emit('votingStarted', {
-        submissions: submissions.map(s => ({ id: s.id, text: s.text })),
-        timeLimit: VOTING_DURATION
-    });
+    // Send voting data to all players after host speaks
+    setTimeout(() => {
+        io.to(roomCode).emit('votingStarted', {
+            submissions: submissions.map(s => ({ id: s.id, text: s.text })),
+            timeLimit: VOTING_DURATION
+        });
+    }, 2500);
 
     // Start voting timer
     gameRoom.roundData.timer = setTimeout(() => {
@@ -162,7 +296,7 @@ function startVotingPhase(roomCode) {
         if (gameRoom.roundPhase === 'voting') {
             endVotingPhase(roomCode);
         }
-    }, VOTING_DURATION * 1000);
+    }, (VOTING_DURATION * 1000) + 2500);
 }
 
 function endVotingPhase(roomCode) {
@@ -181,13 +315,27 @@ function endVotingPhase(roomCode) {
         voteCount[votedSubmissionId] = (voteCount[votedSubmissionId] || 0) + 1;
     });
 
-    // Update player scores
+    // Update player scores and check for achievements
     submissions.forEach(([playerId, submission], index) => {
         const votesReceived = voteCount[index] || 0;
         if (!gameRoom.scores[playerId]) {
             gameRoom.scores[playerId] = 0;
         }
+        
+        // Base points for votes
         gameRoom.scores[playerId] += votesReceived;
+        
+        // Bonus points
+        if (votesReceived === gameRoom.players.length - 1) {
+            gameRoom.scores[playerId] += 2; // Everyone voted for you bonus
+            if (!gameRoom.achievements[playerId]) gameRoom.achievements[playerId] = [];
+            gameRoom.achievements[playerId].push('CROWD_PLEASER');
+        }
+        
+        if (votesReceived === 0) {
+            if (!gameRoom.achievements[playerId]) gameRoom.achievements[playerId] = [];
+            gameRoom.achievements[playerId].push('CRICKETS_CLUB');
+        }
     });
 
     // Prepare results with player names
@@ -196,30 +344,64 @@ function endVotingPhase(roomCode) {
         return {
             playerName: player ? player.name : 'Unknown',
             submission: submission,
-            votes: voteCount[index] || 0
+            votes: voteCount[index] || 0,
+            playerId: playerId
         };
     }).sort((a, b) => b.votes - a.votes);
 
-    // Send results
-    io.to(roomCode).emit('roundResults', {
-        results: results,
-        scores: gameRoom.players.map(player => ({
-            name: player.name,
-            score: gameRoom.scores[player.id] || 0
-        })).sort((a, b) => b.score - a.score)
+    // Send audience reactions for top jokes
+    results.forEach((result, index) => {
+        if (index < 3) { // Top 3 get reactions
+            const reaction = getAudienceReaction(result.votes, gameRoom.players.length);
+            
+            setTimeout(() => {
+                io.to(roomCode).emit('audienceReaction', {
+                    reaction: reaction,
+                    submission: result.submission,
+                    playerName: result.playerName,
+                    isWinner: index === 0
+                });
+            }, index * 2000); // Stagger reactions
+        }
     });
+
+    // Send host commentary based on results
+    const topResult = results[0];
+    if (topResult.votes === 0) {
+        io.to(roomCode).emit('hostSpeaks', {
+            line: getRandomHostLine('noVotes'),
+            type: 'results'
+        });
+    } else if (topResult.votes === gameRoom.players.length - 1) {
+        io.to(roomCode).emit('hostSpeaks', {
+            line: `Unanimous victory! That joke killed harder than my career in accounting!`,
+            type: 'results'
+        });
+    }
+
+    // Send results after reactions
+    setTimeout(() => {
+        io.to(roomCode).emit('roundResults', {
+            results: results,
+            scores: gameRoom.players.map(player => ({
+                name: player.name,
+                score: gameRoom.scores[player.id] || 0
+            })).sort((a, b) => b.score - a.score),
+            achievements: gameRoom.achievements
+        });
+    }, results.length > 0 ? 6000 : 1000);
 
     // Check if game is complete
     if (gameRoom.currentRound >= 3) {
         // Game over
         setTimeout(() => {
             endGame(roomCode);
-        }, 5000);
+        }, 10000);
     } else {
         // Next round
         setTimeout(() => {
             startRound(roomCode, gameRoom.currentRound + 1);
-        }, 5000);
+        }, 10000);
     }
 
     console.log(`Round ${gameRoom.currentRound} ended in room ${roomCode}`);
@@ -231,19 +413,32 @@ function endGame(roomCode) {
 
     const finalScores = gameRoom.players.map(player => ({
         name: player.name,
-        score: gameRoom.scores[player.id] || 0
+        score: gameRoom.scores[player.id] || 0,
+        achievements: gameRoom.achievements[player.id] || []
     })).sort((a, b) => b.score - a.score);
 
-    io.to(roomCode).emit('gameEnded', {
-        winner: finalScores[0],
-        finalScores: finalScores
+    // Send host finale
+    const winnerLine = HOST_LINES.winner[Math.floor(Math.random() * HOST_LINES.winner.length)]
+        .replace('{name}', finalScores[0].name);
+    
+    io.to(roomCode).emit('hostSpeaks', {
+        line: winnerLine,
+        type: 'finale'
     });
+
+    setTimeout(() => {
+        io.to(roomCode).emit('gameEnded', {
+            winner: finalScores[0],
+            finalScores: finalScores
+        });
+    }, 3000);
 
     // Reset game state
     gameRoom.gameStarted = false;
     gameRoom.currentRound = 0;
     gameRoom.roundPhase = 'waiting';
     gameRoom.scores = {};
+    gameRoom.achievements = {};
 
     console.log(`Game ended in room ${roomCode}. Winner: ${finalScores[0].name}`);
 }
@@ -367,16 +562,24 @@ io.on('connection', (socket) => {
             gameRoom.scores[player.id] = 0;
         });
         
-        // Notify all players that game is starting
-        io.to(roomCode).emit('gameStarting', {
-            message: `Game starting with ${gameRoom.players.length} players! Everyone participates - even the host!`,
-            totalPlayers: gameRoom.players.length
+        // Send host welcome
+        io.to(roomCode).emit('hostSpeaks', {
+            line: getRandomHostLine('gameStart'),
+            type: 'welcome'
         });
         
-        // Start first round after a brief delay
+        // Notify all players that game is starting
+        setTimeout(() => {
+            io.to(roomCode).emit('gameStarting', {
+                message: `Game starting with ${gameRoom.players.length} players! Everyone participates - even the host!`,
+                totalPlayers: gameRoom.players.length
+            });
+        }, 3000);
+        
+        // Start first round after host intro
         setTimeout(() => {
             startRound(roomCode, ROUNDS.SETUP_BATTLE);
-        }, 2000);
+        }, 5000);
         
         console.log(`Game started in room ${roomCode} with ${gameRoom.players.length} total players (including host)`);
     });
