@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StandUp Showdown</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>StandUp Showdown</h1>
+            <p class="tagline">The comedy party game where everyone gets a chance to shine!</p>
+        </header>
+        
+        <!-- Landing Page -->
+        <section class="main-section landing" id="landing-page">
+            <div class="card">
+                <h2>Welcome to the Show</h2>
+                <p>Create a room and invite your friends or join an existing room</p>
+                <button class="btn" id="create-room-btn">Create Room</button>
+                <button class="btn btn-secondary" id="join-room-btn">Join Room</button>
+            </div>
+        </section>
+        
+        <!-- Room Joining Section -->
+        <section class="main-section room-join" id="room-join-page">
+            <div class="card">
+                <h2>Join a Room</h2>
+                <p>Enter the room code to join the game</p>
+                <input type="text" id="room-code-input" placeholder="Enter 4-letter code" maxlength="4">
+                <input type="text" id="player-name-input" placeholder="Your nickname">
+                <button class="btn" id="join-game-btn">Join Game</button>
+                <button class="btn btn-secondary" id="back-btn">Back</button>
+            </div>
+        </section>
+        
+        <!-- Host Screen (Main Display) -->
+        <section class="main-section host-screen" id="host-screen">
+            <div class="card">
+                <h2>Room Code: <span id="room-code-display">ABCD</span></h2>
+                <p>Players joined: <span id="player-count">0</span>/6</p>
+                <div id="player-list"></div>
+                <button class="btn" id="start-game-btn">Start Game</button>
+            </div>
+            <div class="audience"></div>
+        </section>
+        
+        <!-- Player Screen (Mobile) -->
+        <section class="main-section player-screen" id="player-screen">
+            <div class="card">
+                <h2>Welcome, <span id="player-name-display">Player</span>!</h2>
+                <p>Waiting for the host to start the game...</p>
+                <div id="game-controls"></div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="scripts/client.js"></script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+:root {
+    --primary-color: #ff5722;
+    --secondary-color: #2196f3;
+    --background-color: #1e1e1e;
+    --text-color: #ffffff;
+    --accent-color: #ffc107;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: var(--primary-color);
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.tagline {
+    font-size: 1.2rem;
+    color: var(--accent-color);
+}
+
+.main-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+.btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 10px 5px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background-color: #e64a19;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+}
+
+.btn-secondary:hover {
+    background-color: #1976d2;
+}
+
+input {
+    padding: 12px;
+    border-radius: 5px;
+    border: none;
+    font-size: 16px;
+    width: 100%;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Hide all sections except landing by default */
+.room-join {
+    display: none;
+}
+
+.host-screen {
+    display: none;
+}
+
+.player-screen {
+    display: none;
+}
+
+/* Audience display styles */
+.audience {
+    height: 150px;
+    background: linear-gradient(to bottom, #333, #111);
+    background-size: contain;
+    background-position: bottom;
+    background-repeat: repeat-x;
+    margin-top: 20px;
+    width: 100%;
+    border-radius: 10px;
+    position: relative;
+}
+
+.audience::before {
+    content: "🎭 AUDIENCE 🎭";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--accent-color);
+    font-size: 1.5rem;
+}
+
+/* Player list styles */
+#player-list {
+    margin: 15px 0;
+}
+
+.player-item {
+    padding: 8px;
+    margin: 5px 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+}
+
+.host-tag {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* Game controls styles */
+#game-controls {
+    margin-top: 20px;
+}
+
+.round-info h3 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.content-box {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.punchline-display, .setup-display, .topic-display {
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--accent-color);
+    margin: 10px 0;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+.answer-form textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 5px;
+    border: none;
+    font-size: 14px;
+    margin-bottom: 15px;
+    color: #333;
+    resize: vertical;
+}
+
+/* For mobile devices */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .card {
+        padding: 15px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        width: 100%;
+        margin: 5px 0;
+    }
+}
