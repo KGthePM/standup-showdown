@@ -4,6 +4,8 @@
     --background-color: #1e1e1e;
     --text-color: #ffffff;
     --accent-color: #ffc107;
+    --success-color: #4caf50;
+    --winner-color: #gold;
 }
 
 * {
@@ -139,6 +141,9 @@ input {
     margin: 5px 0;
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .host-tag {
@@ -149,11 +154,27 @@ input {
 /* Game controls styles */
 #game-controls {
     margin-top: 20px;
+    width: 100%;
+}
+
+.round-info {
+    width: 100%;
 }
 
 .round-info h3 {
     color: var(--primary-color);
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+#timer {
+    background-color: var(--accent-color);
+    color: #000;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    display: inline-block;
 }
 
 .content-box {
@@ -161,6 +182,7 @@ input {
     padding: 15px;
     border-radius: 8px;
     margin: 15px 0;
+    text-align: left;
 }
 
 .punchline-display, .setup-display, .topic-display {
@@ -168,9 +190,14 @@ input {
     font-size: 1.1rem;
     color: var(--accent-color);
     margin: 10px 0;
-    padding: 10px;
-    background-color: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    background-color: rgba(255, 193, 7, 0.1);
     border-radius: 5px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.answer-form {
+    margin-top: 20px;
 }
 
 .answer-form textarea {
@@ -182,9 +209,111 @@ input {
     margin-bottom: 15px;
     color: #333;
     resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
 }
 
-/* For mobile devices */
+/* Voting UI styles */
+.submissions-list {
+    margin-top: 15px;
+}
+
+.submission-item {
+    background-color: rgba(255, 255, 255, 0.08);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.submission-item p {
+    margin-bottom: 10px;
+    font-style: italic;
+    font-size: 1.1rem;
+}
+
+.vote-btn {
+    background-color: var(--success-color);
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.vote-btn:hover {
+    background-color: #45a049;
+}
+
+/* Results UI styles */
+.results-list {
+    margin-top: 15px;
+}
+
+.result-item {
+    background-color: rgba(255, 255, 255, 0.08);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.result-item.winner {
+    border-left-color: var(--accent-color);
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.result-item p {
+    margin-bottom: 5px;
+}
+
+.result-item p:nth-child(2) {
+    font-style: italic;
+    font-size: 1.1rem;
+    margin: 10px 0;
+}
+
+.result-item p:last-child {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+/* Final scores styles */
+.final-scores {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.final-scores h4 {
+    color: var(--accent-color);
+    margin-bottom: 10px;
+}
+
+.final-scores p {
+    padding: 5px 0;
+    font-size: 1.1rem;
+}
+
+/* Host preview styles */
+.submissions-preview {
+    margin-top: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.submissions-preview h4 {
+    color: var(--accent-color);
+    margin-bottom: 10px;
+}
+
+.submissions-preview p {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
     h1 {
         font-size: 2rem;
@@ -192,6 +321,7 @@ input {
     
     .card {
         padding: 15px;
+        max-width: 100%;
     }
     
     .btn {
@@ -199,4 +329,60 @@ input {
         width: 100%;
         margin: 5px 0;
     }
+    
+    .answer-form textarea {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .submission-item, .result-item {
+        padding: 12px;
+    }
+    
+    .player-item {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Animation for new elements */
+.submission-item, .result-item {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success feedback styles */
+.success-message {
+    background-color: var(--success-color);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "...";
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { opacity: 0; }
+    50% { opacity: 1; }
+    80%, 100% { opacity: 0; }
 }
