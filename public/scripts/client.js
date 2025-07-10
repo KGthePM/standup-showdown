@@ -9,8 +9,8 @@ let gameState = {
     players: [],
     currentRound: 0,
     gameStarted: false,
-    phase: 'waiting',
-    currentSubmissions: [],
+    roundPhase: 'waiting',
+    currentContent: '',
     hasSubmitted: false,
     hasVoted: false
 };
@@ -32,10 +32,6 @@ const playerNameDisplay = document.getElementById('player-name-display');
 const playerCount = document.getElementById('player-count');
 const playerList = document.getElementById('player-list');
 const gameControls = document.getElementById('game-controls');
-
-// Timer variables
-let timer = null;
-let timeLeft = 0;
 
 // Navigation functions
 function showLandingPage() {
@@ -73,227 +69,215 @@ function updatePlayerList() {
         const playerElement = document.createElement('div');
         playerElement.className = 'player-item';
         if (player.isHost) {
-            playerElement.innerHTML = `${player.name} <span class="host-tag">(Host)</span> - ${player.score} points`;
+            playerElement.innerHTML = `${player.name} <span class="host-tag">(Host)</span> - Score: ${player.score || 0}`;
         } else {
-            playerElement.innerHTML = `${player.name} - ${player.score} points`;
+            playerElement.textContent = `${player.name} - Score: ${player.score || 0}`;
         }
         playerList.appendChild(playerElement);
     });
     playerCount.textContent = gameState.players.length;
 }
 
-// Timer functions
-function startTimer(duration, onComplete) {
-    timeLeft = duration;
-    updateTimerDisplay();
-    
-    timer = setInterval(() => {
-        timeLeft--;
-        updateTimerDisplay();
-        
-        if (timeLeft <= 0) {
-            clearInterval(timer);
-            if (onComplete) onComplete();
-        }
-    }, 1000);
-}
-
-function updateTimerDisplay() {
-    const timerElement = document.getElementById('timer');
-    if (timerElement) {
-        timerElement.textContent = `Time left: ${timeLeft}s`;
-    }
-}
-
-function stopTimer() {
-    if (timer) {
-        clearInterval(timer);
-        timer = null;
-    }
-}
-
 // Game UI functions
-function showSubmissionUI(roundData) {
-    gameState.hasSubmitted = false;
+function showWritingInterface(roundData) {
+    let promptText = '';
+    let placeholderText = '';
     
-    let html = `
-        <div class="round-info">
-            <h3>Round ${gameState.currentRound}</h3>
-            <div id="timer">Time left: 90s</div>
-            <div class="content-box">
-                <p>${roundData.instruction}</p>
-    `;
-    
-    if (roundData.roundData.punchline) {
-        html += `<div class="punchline-display">"${roundData.roundData.punchline}"</div>`;
-    } else if (roundData.roundData.setup) {
-        html += `<div class="setup-display">"${roundData.roundData.setup}"</div>`;
-    } else if (roundData.roundData.topic) {
-        html += `<div class="topic-display">Topic: ${roundData.roundData.topic}</div>`;
+    switch (roundData.roundType) {
+        case 'punchlines':
+            promptText = `Write a setup for this punchline:`;
+            placeholderText = 'Write your setup here...';
+            break;
+        case 'setups':
+            promptText = `Write a punchline for this setup:`;
+            placeholderText = 'Write your punchline here...';
+            break;
+        case 'topics':
+            promptText = `Create a joke about:`;
+            placeholderText = 'Write your complete joke here...';
+            break;
     }
     
-    html += `
+    gameControls.innerHTML = `
+        <div class="round-info">
+            <h3>${roundData.roundName}</h3>
+            <p>${promptText}</p>
+            <div class="content-box">
+                <div class="${roundData.roundType.slice(0, -1)}-display">${roundData.content}</div>
             </div>
             <div class="answer-form">
-                <textarea id="answer-input" placeholder="Write your answer here..." rows="4"></textarea>
+                <textarea id="answer-input" placeholder="${placeholderText}" rows="4"></textarea>
                 <button class="btn" id="submit-answer-btn">Submit Answer</button>
             </div>
+            <div id="timer-display">Time remaining: ${roundData.timeLimit}s</div>
+            <div id="submission-status">Waiting for submissions...</div>
         </div>
     `;
     
-    gameControls.innerHTML = html;
+    // Set up timer
+    let timeLeft = roundData.timeLimit;
+    const timerDisplay = document.getElementById('timer-display');
+    const timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `Time remaining: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            timerDisplay.textContent = 'Time\'s up!';
+        }
+    }, 1000);
     
-    // Add event listener for submit button
-    document.getElementById('submit-answer-btn').addEventListener('click', () => {
-        const answer = document.getElementById('answer-input').value.trim();
-        if (answer.length < 3) {
-            alert('Please write a longer answer!');
+    // Set up submit button
+    const submitBtn = document.getElementById('submit-answer-btn');
+    const answerInput = document.getElementById('answer-input');
+    
+    submitBtn.addEventListener('click', () => {
+        const answer = answerInput.value.trim();
+        if (answer.length < 5) {
+            alert('Please write a longer answer (at least 5 characters)');
             return;
         }
         
-        socket.emit('submitAnswer', { roomCode: gameState.roomCode, answer });
-        gameState.hasSubmitted = true;
+        socket.emit('submitAnswer', { 
+            roomCode: gameState.roomCode, 
+            answer: answer 
+        });
         
-        // Update UI to show submission received
-        gameControls.innerHTML = `
-            <div class="round-info">
-                <h3>Round ${gameState.currentRound}</h3>
-                <div class="content-box">
-                    <p>✅ Your answer has been submitted!</p>
-                    <p>Waiting for other players...</p>
-                </div>
-            </div>
-        `;
+        submitBtn.disabled = true;
+        answerInput.disabled = true;
+        submitBtn.textContent = 'Submitted!';
+        gameState.hasSubmitted = true;
     });
-    
-    startTimer(roundData.timeLimit);
 }
 
-function showVotingUI(votingData) {
-    gameState.hasVoted = false;
-    gameState.currentSubmissions = votingData.submissions;
-    
-    let html = `
+function showVotingInterface(votingData) {
+    gameControls.innerHTML = `
         <div class="round-info">
             <h3>Voting Time!</h3>
-            <div id="timer">Time left: 60s</div>
-            <div class="content-box">
-                <p>Vote for the best answer:</p>
-                <div class="submissions-list">
-    `;
-    
-    votingData.submissions.forEach((submission, index) => {
-        // Don't show player's own submission for voting
-        if (submission.id !== socket.id) {
-            html += `
-                <div class="submission-item">
-                    <p>"${submission.text}"</p>
-                    <button class="btn vote-btn" data-player-id="${submission.id}">
-                        Vote for this one
-                    </button>
-                </div>
-            `;
-        }
-    });
-    
-    html += `
-                </div>
-            </div>
+            <p>Vote for your favorite answer (you can't vote for your own):</p>
+            <div id="voting-options"></div>
+            <div id="voting-timer">Time remaining: ${votingData.timeLimit}s</div>
+            <div id="vote-status">Waiting for votes...</div>
         </div>
     `;
     
-    gameControls.innerHTML = html;
+    const votingOptions = document.getElementById('voting-options');
     
-    // Add event listeners for vote buttons
-    document.querySelectorAll('.vote-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const votedFor = e.target.getAttribute('data-player-id');
-            socket.emit('submitVote', { roomCode: gameState.roomCode, votedFor });
-            gameState.hasVoted = true;
-            
-            // Update UI to show vote received
-            gameControls.innerHTML = `
-                <div class="round-info">
-                    <h3>Voting Time!</h3>
-                    <div class="content-box">
-                        <p>✅ Your vote has been submitted!</p>
-                        <p>Waiting for other players...</p>
-                    </div>
-                </div>
-            `;
-        });
+    votingData.submissions.forEach(submission => {
+        const optionElement = document.createElement('div');
+        optionElement.className = 'voting-option';
+        optionElement.innerHTML = `
+            <button class="btn vote-btn" data-submission-id="${submission.id}">
+                ${submission.text}
+            </button>
+        `;
+        votingOptions.appendChild(optionElement);
     });
     
-    startTimer(votingData.timeLimit);
+    // Set up voting timer
+    let timeLeft = votingData.timeLimit;
+    const timerDisplay = document.getElementById('voting-timer');
+    const timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `Time remaining: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            timerDisplay.textContent = 'Time\'s up!';
+        }
+    }, 1000);
+    
+    // Set up vote buttons
+    const voteButtons = document.querySelectorAll('.vote-btn');
+    voteButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const submissionId = parseInt(btn.dataset.submissionId);
+            
+            socket.emit('submitVote', {
+                roomCode: gameState.roomCode,
+                submissionId: submissionId
+            });
+            
+            // Disable all vote buttons
+            voteButtons.forEach(b => b.disabled = true);
+            btn.style.backgroundColor = 'var(--accent-color)';
+            btn.textContent += ' ✓';
+            gameState.hasVoted = true;
+        });
+    });
 }
 
-function showResultsUI(resultsData) {
-    stopTimer();
-    
-    let html = `
+function showResults(resultsData) {
+    let resultsHTML = `
         <div class="round-info">
-            <h3>Round ${gameState.currentRound} Results</h3>
-            <div class="content-box">
+            <h3>Round Results</h3>
+            <div class="results-list">
     `;
     
-    if (resultsData.winners.length === 1) {
-        html += `<p>🏆 Winner: ${resultsData.winners[0]}!</p>`;
-    } else {
-        html += `<p>🏆 Tie between: ${resultsData.winners.join(', ')}!</p>`;
-    }
-    
-    html += `<div class="results-list">`;
-    
     resultsData.results.forEach((result, index) => {
-        const trophy = result.isWinner ? '🏆 ' : '';
-        html += `
-            <div class="result-item ${result.isWinner ? 'winner' : ''}">
-                <p><strong>${trophy}${result.playerName}</strong></p>
-                <p>"${result.text}"</p>
-                <p>Votes: ${result.votes}</p>
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+        resultsHTML += `
+            <div class="result-item">
+                <div class="result-rank">${medal} ${index + 1}.</div>
+                <div class="result-content">
+                    <div class="result-text">"${result.submission}"</div>
+                    <div class="result-author">by ${result.playerName}</div>
+                    <div class="result-votes">${result.votes} vote${result.votes !== 1 ? 's' : ''}</div>
+                </div>
             </div>
         `;
     });
     
-    html += `</div>`;
-    
-    if (gameState.currentRound < 3) {
-        html += `<p>Next round starting soon...</p>`;
-    } else {
-        html += `<p>Final round complete! Calculating overall winner...</p>`;
-    }
-    
-    html += `
+    resultsHTML += `
             </div>
-        </div>
+            <h4>Current Scores</h4>
+            <div class="scores-list">
     `;
     
-    gameControls.innerHTML = html;
-}
-
-function showGameEndUI(endData) {
-    let html = `
-        <div class="round-info">
-            <h3>🎉 Game Complete! 🎉</h3>
-            <div class="content-box">
-                <p><strong>Overall Winner: ${endData.winner}!</strong></p>
-                <div class="final-scores">
-                    <h4>Final Scores:</h4>
-    `;
-    
-    endData.finalScores.forEach((player, index) => {
+    resultsData.scores.forEach((score, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
-        html += `<p>${medal} ${player.name}: ${player.score} points</p>`;
+        resultsHTML += `
+            <div class="score-item">
+                ${medal} ${score.name}: ${score.score} points
+            </div>
+        `;
     });
     
-    html += `
-                </div>
-                <button class="btn" onclick="location.reload()">Play Again</button>
+    resultsHTML += `
             </div>
+            <p>Next round starting soon...</p>
         </div>
     `;
     
-    gameControls.innerHTML = html;
+    gameControls.innerHTML = resultsHTML;
+}
+
+function showGameEnd(gameEndData) {
+    let endHTML = `
+        <div class="round-info">
+            <h3>🎉 Game Over! 🎉</h3>
+            <div class="winner-announcement">
+                <h2>Winner: ${gameEndData.winner.name}!</h2>
+                <p>Final Score: ${gameEndData.winner.score} points</p>
+            </div>
+            <h4>Final Standings</h4>
+            <div class="final-scores-list">
+    `;
+    
+    gameEndData.finalScores.forEach((score, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+        endHTML += `
+            <div class="final-score-item">
+                ${medal} ${index + 1}. ${score.name}: ${score.score} points
+            </div>
+        `;
+    });
+    
+    endHTML += `
+            </div>
+            <button class="btn" onclick="location.reload()">Play Again</button>
+        </div>
+    `;
+    
+    gameControls.innerHTML = endHTML;
 }
 
 // Event listeners
@@ -307,6 +291,7 @@ createRoomBtn.addEventListener('click', () => {
     gameState.playerName = playerName.trim();
     playerNameDisplay.textContent = gameState.playerName;
     
+    // Send request to server to create room
     socket.emit('createRoom', { playerName: gameState.playerName });
 });
 
@@ -331,6 +316,7 @@ joinGameBtn.addEventListener('click', () => {
     gameState.playerName = playerName.trim();
     playerNameDisplay.textContent = gameState.playerName;
     
+    // Send request to server to join room
     socket.emit('joinRoom', { roomCode, playerName: gameState.playerName });
 });
 
@@ -344,6 +330,7 @@ startGameBtn.addEventListener('click', () => {
         return;
     }
     
+    // Send request to server to start game
     socket.emit('startGame', { roomCode: gameState.roomCode });
 });
 
@@ -389,6 +376,7 @@ socket.on('hostChanged', ({ newHost, players }) => {
     gameState.players = players;
     updatePlayerList();
     
+    // Check if current player is the new host
     if (gameState.playerName === newHost) {
         gameState.isHost = true;
         alert('You are now the host!');
@@ -398,100 +386,71 @@ socket.on('hostChanged', ({ newHost, players }) => {
     console.log(`${newHost} is now the host`);
 });
 
-socket.on('gameStarted', ({ message }) => {
-    gameState.gameStarted = true;
-    alert(message);
-    
-    // Show waiting message
-    if (!gameState.isHost) {
-        gameControls.innerHTML = `
-            <div class="round-info">
-                <h3>Game Starting...</h3>
-                <div class="content-box">
-                    <p>Get ready for the first round!</p>
-                </div>
-            </div>
-        `;
-    }
-    
-    console.log('Game started');
-});
-
 socket.on('roundStarted', (roundData) => {
+    gameState.gameStarted = true;
     gameState.currentRound = roundData.round;
-    gameState.phase = 'submitting';
+    gameState.roundPhase = 'writing';
+    gameState.currentContent = roundData.content;
+    gameState.hasSubmitted = false;
+    gameState.hasVoted = false;
     
-    if (!gameState.isHost) {
-        showSubmissionUI(roundData);
-    } else {
-        // Host sees the round info but doesn't participate
-        gameControls.innerHTML = `
-            <div class="round-info">
-                <h3>${roundData.roundName} - Round ${roundData.round}</h3>
-                <div class="content-box">
-                    <p>${roundData.instruction}</p>
-                    <p>Players are submitting their answers...</p>
-                    <div id="timer">Time left: ${roundData.timeLimit}s</div>
-                </div>
-            </div>
-        `;
-        startTimer(roundData.timeLimit);
+    if (gameState.isHost) {
+        // Update host screen with round info
+        hostScreen.querySelector('.card h2').textContent = `Round ${roundData.round}: ${roundData.roundName}`;
     }
+    
+    showWritingInterface(roundData);
     
     console.log(`Round ${roundData.round} started: ${roundData.roundName}`);
 });
 
 socket.on('votingStarted', (votingData) => {
-    gameState.phase = 'voting';
-    
-    if (!gameState.isHost) {
-        showVotingUI(votingData);
-    } else {
-        // Host sees voting info
-        gameControls.innerHTML = `
-            <div class="round-info">
-                <h3>Voting Phase</h3>
-                <div class="content-box">
-                    <p>Players are voting on their favorite answers...</p>
-                    <div id="timer">Time left: ${votingData.timeLimit}s</div>
-                    <div class="submissions-preview">
-                        <h4>Submitted Answers:</h4>
-                        ${votingData.submissions.map(s => `<p>"${s.text}" - ${s.playerName}</p>`).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-        startTimer(votingData.timeLimit);
-    }
+    gameState.roundPhase = 'voting';
+    showVotingInterface(votingData);
     
     console.log('Voting phase started');
 });
 
 socket.on('roundResults', (resultsData) => {
-    gameState.phase = 'results';
-    gameState.players = resultsData.players; // Update scores
+    gameState.roundPhase = 'results';
+    gameState.players = resultsData.scores.map(score => {
+        const player = gameState.players.find(p => p.name === score.name);
+        return { ...player, score: score.score };
+    });
     
-    showResultsUI(resultsData);
-    updatePlayerList(); // Update the player list with new scores
+    showResults(resultsData);
+    updatePlayerList();
     
-    console.log(`Round ${gameState.currentRound} results:`, resultsData.winners);
+    console.log('Round results received');
 });
 
-socket.on('gameEnded', (endData) => {
+socket.on('gameEnded', (gameEndData) => {
     gameState.gameStarted = false;
-    gameState.phase = 'ended';
+    showGameEnd(gameEndData);
     
-    showGameEndUI(endData);
-    
-    console.log(`Game ended. Winner: ${endData.winner}`);
+    console.log(`Game ended. Winner: ${gameEndData.winner.name}`);
 });
 
-socket.on('submissionReceived', ({ message }) => {
-    console.log(message);
+socket.on('submissionReceived', () => {
+    console.log('Submission received by server');
 });
 
-socket.on('voteReceived', ({ message }) => {
-    console.log(message);
+socket.on('submissionUpdate', ({ submitted, total }) => {
+    const statusElement = document.getElementById('submission-status');
+    if (statusElement) {
+        statusElement.textContent = `Submissions: ${submitted}/${total}`;
+    }
+});
+
+socket.on('voteReceived', () => {
+    console.log('Vote received by server');
+});
+
+socket.on('voteUpdate', ({ voted, total }) => {
+    const statusElement = document.getElementById('vote-status');
+    if (statusElement) {
+        statusElement.textContent = `Votes: ${voted}/${total}`;
+    }
 });
 
 socket.on('error', ({ message }) => {
