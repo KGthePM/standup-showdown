@@ -353,24 +353,32 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Check if enough players (minimum 3)
+        // Check if enough players (minimum 3 total, including host)
         if (gameRoom.players.length < 3) {
-            socket.emit('error', { message: 'Need at least 3 players to start' });
+            socket.emit('error', { message: 'Need at least 3 players total to start (including host)' });
             return;
         }
         
         // Start game
         gameRoom.gameStarted = true;
         
-        // Initialize scores
+        // Initialize scores for all players (including host)
         gameRoom.players.forEach(player => {
             gameRoom.scores[player.id] = 0;
         });
         
-        // Start first round
-        startRound(roomCode, ROUNDS.SETUP_BATTLE);
+        // Notify all players that game is starting
+        io.to(roomCode).emit('gameStarting', {
+            message: `Game starting with ${gameRoom.players.length} players! Everyone participates - even the host!`,
+            totalPlayers: gameRoom.players.length
+        });
         
-        console.log(`Game started in room ${roomCode}`);
+        // Start first round after a brief delay
+        setTimeout(() => {
+            startRound(roomCode, ROUNDS.SETUP_BATTLE);
+        }, 2000);
+        
+        console.log(`Game started in room ${roomCode} with ${gameRoom.players.length} total players (including host)`);
     });
 
     // Handle player submissions

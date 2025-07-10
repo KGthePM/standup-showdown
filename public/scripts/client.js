@@ -326,7 +326,7 @@ backBtn.addEventListener('click', () => {
 
 startGameBtn.addEventListener('click', () => {
     if (gameState.players.length < 3) {
-        alert('Need at least 3 players to start the game');
+        alert('Need at least 3 players total to start (including you as host)');
         return;
     }
     
@@ -379,11 +379,23 @@ socket.on('hostChanged', ({ newHost, players }) => {
     // Check if current player is the new host
     if (gameState.playerName === newHost) {
         gameState.isHost = true;
-        alert('You are now the host!');
+        alert('You are now the host! You can start the game when ready.');
         showHostScreen();
     }
     
     console.log(`${newHost} is now the host`);
+});
+
+socket.on('gameStarting', ({ message, totalPlayers }) => {
+    // Show message to all players
+    alert(message);
+    
+    // Switch everyone to player view since everyone participates
+    if (gameState.isHost) {
+        showPlayerScreen();
+    }
+    
+    console.log(`Game starting with ${totalPlayers} players`);
 });
 
 socket.on('roundStarted', (roundData) => {
@@ -393,11 +405,6 @@ socket.on('roundStarted', (roundData) => {
     gameState.currentContent = roundData.content;
     gameState.hasSubmitted = false;
     gameState.hasVoted = false;
-    
-    if (gameState.isHost) {
-        // Update host screen with round info
-        hostScreen.querySelector('.card h2').textContent = `Round ${roundData.round}: ${roundData.roundName}`;
-    }
     
     showWritingInterface(roundData);
     
