@@ -204,19 +204,35 @@ function showAudienceReaction(reactionData) {
     }, 3000);
 }
 
-// Display host commentary
+// Improved displayHostMessage function for client.js
+// Replace the existing displayHostMessage function with this version
+
 function displayHostMessage(hostData) {
-    // Create a temporary host message overlay
-    const hostMessage = document.createElement('div');
-    hostMessage.className = 'host-message';
-    hostMessage.innerHTML = `
-        <div class="host-bubble">
-            <div class="host-avatar">🎭</div>
-            <div class="host-text">${hostData.line}</div>
+    // Remove any existing host messages first
+    const existingMessages = document.querySelectorAll('.host-message-overlay');
+    existingMessages.forEach(msg => {
+        if (msg.parentNode) {
+            msg.parentNode.removeChild(msg);
+        }
+    });
+    
+    // Create a better host message overlay
+    const hostMessageOverlay = document.createElement('div');
+    hostMessageOverlay.className = 'host-message-overlay';
+    hostMessageOverlay.innerHTML = `
+        <div class="host-bubble-improved">
+            <div class="host-avatar-improved">🎭</div>
+            <div class="host-text-improved">${hostData.line}</div>
+            <div class="host-close-btn" onclick="this.parentElement.parentElement.remove()">×</div>
         </div>
     `;
     
-    document.body.appendChild(hostMessage);
+    document.body.appendChild(hostMessageOverlay);
+    
+    // Animate in
+    setTimeout(() => {
+        hostMessageOverlay.classList.add('show');
+    }, 100);
     
     // Play appropriate sound for host
     if (typeof soundManager !== 'undefined') {
@@ -229,12 +245,17 @@ function displayHostMessage(hostData) {
         }
     }
     
-    // Remove after 4 seconds
+    // Auto-remove after 6 seconds (longer for better readability)
     setTimeout(() => {
-        if (hostMessage.parentNode) {
-            hostMessage.parentNode.removeChild(hostMessage);
+        if (hostMessageOverlay.parentNode) {
+            hostMessageOverlay.classList.remove('show');
+            setTimeout(() => {
+                if (hostMessageOverlay.parentNode) {
+                    hostMessageOverlay.parentNode.removeChild(hostMessageOverlay);
+                }
+            }, 500);
         }
-    }, 4000);
+    }, 6000);
 }
 
 // Reset round UI
