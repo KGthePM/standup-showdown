@@ -189,7 +189,7 @@
             line-height: 1.5;
         }
 
-        .local-notice {
+        .unified-notice {
             background: linear-gradient(45deg, #4caf50, #45a049);
             color: white;
             padding: 15px;
@@ -225,8 +225,8 @@
         <p class="tagline">Where Comedy Meets Competition</p>
         <p class="subtitle">Choose Your Comedy Adventure!</p>
 
-        <div class="local-notice">
-            🎮 Local Development Mode - Both Games Available!
+        <div class="unified-notice">
+            🚀 Unified Platform - All Games on One Server!
         </div>
 
         <div class="games-grid">
@@ -258,31 +258,35 @@
         </div>
 
         <div class="instructions">
-            <h3>🚀 How to Play Locally:</h3>
+            <h3>🚀 How to Play on the Unified Platform:</h3>
             <ol>
                 <li><strong>Choose a game</strong> by clicking on it above</li>
                 <li><strong>Click "Create Room"</strong> to host a game</li>
                 <li><strong>Share the 4-letter room code</strong> with your friends</li>
-                <li><strong>Friends open the same game URL</strong> and click "Join Room"</li>
+                <li><strong>Friends visit the same game URL</strong> and click "Join Room"</li>
                 <li><strong>Enter the room code</strong> and start playing!</li>
             </ol>
             <p style="margin-top: 15px; color: var(--accent-color);">
-                💡 <strong>Game URLs:</strong><br>
-                🎤 Joke Factory: <code>http://localhost:3000</code><br>
-                🕵️ Truth Tales: <code>http://localhost:3002</code>
+                💡 <strong>Unified Routes:</strong><br>
+                🎤 Joke Factory: <code>/joke-factory</code><br>
+                🕵️ Truth Tales: <code>/truth-tales</code><br>
+                🏠 Game Hub: <code>/</code> (this page)
+            </p>
+            <p style="margin-top: 10px; color: #ccc;">
+                ✨ <strong>Benefits:</strong> Single server, shared resources, seamless experience, easy deployment!
             </p>
         </div>
     </div>
 
     <script>
         function playJokeFactory() {
-            // Open Joke Factory on port 3000
-            window.open('http://localhost:3000', '_blank');
+            // Navigate to Joke Factory route on same server
+            window.location.href = '/joke-factory';
         }
 
         function playTruthTales() {
-            // Open Truth Tales on port 3002
-            window.open('http://localhost:3002', '_blank');
+            // Navigate to Truth Tales route on same server
+            window.location.href = '/truth-tales';
         }
     </script>
 </body>
