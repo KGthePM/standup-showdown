@@ -11,8 +11,13 @@ const io = socketIo(server);
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Basic route
+// FIXED: Main route serves the landing page
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Route to serve the actual game
+app.get('/joke-factory', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

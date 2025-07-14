@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StandUp Showdown - Game Hub</title>
+    <title>StandUp Showdown - Online Comedy Party Game</title>
     <style>
         :root {
             --primary-color: #ff5722;
@@ -189,6 +189,15 @@
             line-height: 1.5;
         }
 
+        .online-notice {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
         /* Mobile responsive */
         @media (max-width: 768px) {
             h1 {
@@ -214,70 +223,64 @@
     <div class="container">
         <h1>🎭 StandUp Showdown 🎭</h1>
         <p class="tagline">Where Comedy Meets Competition</p>
-        <p class="subtitle">Choose Your Comedy Adventure</p>
+        <p class="subtitle">Play Online with Friends Anywhere!</p>
+
+        <div class="online-notice">
+            🌐 Now Live Online! Share this link with friends to play together from anywhere!
+        </div>
 
         <div class="games-grid">
             <!-- Joke Factory Game -->
             <div class="game-card" onclick="playJokeFactory()">
-                <span class="status-badge">Available</span>
+                <span class="status-badge">Live</span>
                 <div class="game-icon">🎤</div>
                 <h2 class="game-title">Joke Factory</h2>
                 <p class="game-description">
                     The original comedy battle! Create setups, punchlines, and full jokes while a virtual host guides you through three hilarious rounds.
                 </p>
-                <a href="http://localhost:3000" class="play-btn" target="_blank">
+                <a href="/joke-factory" class="play-btn">
                     Play Joke Factory
                 </a>
             </div>
 
             <!-- Truth Tales Game -->
             <div class="game-card truth-tales" onclick="playTruthTales()">
-                <span class="status-badge">Available</span>
+                <span class="status-badge">Coming Soon</span>
                 <div class="game-icon">🕵️</div>
                 <h2 class="game-title">Truth Tales</h2>
                 <p class="game-description">
                     Share your most embarrassing true stories anonymously, then guess whose hilarious disaster belongs to whom!
                 </p>
-                <a href="http://localhost:3002" class="play-btn" target="_blank">
-                    Play Truth Tales
-                </a>
+                <div class="play-btn" style="opacity: 0.6; cursor: not-allowed;">
+                    Coming Soon
+                </div>
             </div>
         </div>
 
         <div class="instructions">
-            <h3>🚀 How to Get Started:</h3>
+            <h3>🚀 How to Play Online:</h3>
             <ol>
-                <li><strong>Start Joke Factory:</strong> Open terminal and run <code>node server.js</code></li>
-                <li><strong>Start Truth Tales:</strong> Open another terminal, run <code>cd games/truth-tales && node server.js</code></li>
-                <li><strong>Click a game above</strong> to start playing!</li>
-                <li><strong>Create or join a room</strong> to play with friends</li>
+                <li><strong>Choose a game</strong> by clicking on it above</li>
+                <li><strong>Click "Create Room"</strong> to host a game</li>
+                <li><strong>Share the 4-letter room code</strong> with your friends</li>
+                <li><strong>Friends visit this same website</strong> and click "Join Room"</li>
+                <li><strong>Enter the room code</strong> and start playing!</li>
             </ol>
             <p style="margin-top: 15px; color: var(--accent-color);">
-                💡 <strong>Tip:</strong> Each game opens in a new tab so you can easily switch between them!
+                💡 <strong>Tip:</strong> Works on phones, tablets, and computers! Everyone can play from their own device.
             </p>
         </div>
     </div>
 
     <script>
         function playJokeFactory() {
-            window.open('http://localhost:3000', '_blank');
+            window.location.href = '/joke-factory';
         }
 
         function playTruthTales() {
-            window.open('http://localhost:3002', '_blank');
+            // Coming soon
+            alert('🕵️ Truth Tales coming soon! For now, enjoy Joke Factory!');
         }
-
-        // Check if servers are running
-        function checkServerStatus() {
-            // This is a simple visual indicator - in a real app you'd do actual health checks
-            console.log('🎭 Welcome to StandUp Showdown!');
-            console.log('🎮 Make sure both game servers are running:');
-            console.log('   🎤 Joke Factory: node server.js (port 3000)');
-            console.log('   🕵️ Truth Tales: cd games/truth-tales && node server.js (port 3002)');
-        }
-
-        // Run on page load
-        checkServerStatus();
     </script>
 </body>
 </html>
