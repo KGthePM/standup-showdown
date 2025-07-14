@@ -52,31 +52,38 @@ const volumeSlider = document.getElementById('volume-slider');
 
 // Initialize sound controls
 function initializeSoundControls() {
-    // Sound toggle button
-    soundToggleBtn.addEventListener('click', () => {
-        const isEnabled = soundManager.toggleSound();
-        soundToggleBtn.textContent = isEnabled ? '🔊' : '🔇';
-        soundToggleBtn.classList.toggle('muted', !isEnabled);
-        
-        if (isEnabled) {
-            soundManager.playSuccess();
-        }
-    });
+    // Check if sound controls exist and soundManager is available
+    if (soundToggleBtn && typeof soundManager !== 'undefined') {
+        soundToggleBtn.addEventListener('click', () => {
+            const isEnabled = soundManager.toggleSound();
+            soundToggleBtn.textContent = isEnabled ? '🔊' : '🔇';
+            soundToggleBtn.classList.toggle('muted', !isEnabled);
+            
+            if (isEnabled) {
+                soundManager.playSuccess();
+            }
+        });
+    }
 
     // Volume slider
-    volumeSlider.addEventListener('input', (e) => {
-        const volume = e.target.value / 100;
-        soundManager.setVolume(volume);
-    });
+    if (volumeSlider && typeof soundManager !== 'undefined') {
+        volumeSlider.addEventListener('input', (e) => {
+            const volume = e.target.value / 100;
+            soundManager.setVolume(volume);
+        });
+    }
 
     // Preload sounds when user first interacts with the page
     document.addEventListener('click', () => {
-        soundManager.preloadSounds();
+        if (typeof soundManager !== 'undefined') {
+            soundManager.preloadSounds();
+        }
     }, { once: true });
 }
 
 // Navigation functions
 function showLandingPage() {
+    console.log('🎯 Showing landing page');
     landingPage.style.display = 'flex';
     roomJoinPage.style.display = 'none';
     hostScreen.style.display = 'none';
@@ -85,6 +92,7 @@ function showLandingPage() {
 }
 
 function showRoomJoinPage() {
+    console.log('🎯 Showing room join page');
     landingPage.style.display = 'none';
     roomJoinPage.style.display = 'flex';
     hostScreen.style.display = 'none';
@@ -93,6 +101,7 @@ function showRoomJoinPage() {
 }
 
 function showHostScreen() {
+    console.log('🎯 Showing host screen');
     landingPage.style.display = 'none';
     roomJoinPage.style.display = 'none';
     hostScreen.style.display = 'flex';
@@ -101,6 +110,7 @@ function showHostScreen() {
 }
 
 function showPlayerScreen() {
+    console.log('🎯 Showing player screen');
     landingPage.style.display = 'none';
     roomJoinPage.style.display = 'none';
     hostScreen.style.display = 'none';
@@ -109,6 +119,7 @@ function showPlayerScreen() {
 }
 
 function showGameRoundScreen() {
+    console.log('🎯 Showing game round screen');
     landingPage.style.display = 'none';
     roomJoinPage.style.display = 'none';
     hostScreen.style.display = 'none';
@@ -118,6 +129,11 @@ function showGameRoundScreen() {
 
 // Update player list display
 function updatePlayerList() {
+    if (!playerList) {
+        console.warn('⚠️ Player list element not found');
+        return;
+    }
+    
     playerList.innerHTML = '';
     gameState.players.forEach(player => {
         const playerElement = document.createElement('div');
@@ -129,7 +145,10 @@ function updatePlayerList() {
         }
         playerList.appendChild(playerElement);
     });
-    playerCount.textContent = gameState.players.length;
+    
+    if (playerCount) {
+        playerCount.textContent = gameState.players.length;
+    }
 }
 
 // Show audience reaction with sound and animation
@@ -175,7 +194,9 @@ function showAudienceReaction(reactionData) {
     audienceReaction.classList.add(reactionType);
     
     // Play corresponding sound
-    soundManager.play(reactionType.replace('-', ''));
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play(reactionType.replace('-', ''));
+    }
     
     // Remove reaction after duration
     setTimeout(() => {
@@ -198,12 +219,14 @@ function displayHostMessage(hostData) {
     document.body.appendChild(hostMessage);
     
     // Play appropriate sound for host
-    if (hostData.type === 'welcome' || hostData.type === 'finale') {
-        soundManager.play('applause', 0.3);
-    } else if (hostData.type === 'encouragement') {
-        soundManager.play('ding', 0.4);
-    } else {
-        soundManager.play('ding', 0.2);
+    if (typeof soundManager !== 'undefined') {
+        if (hostData.type === 'welcome' || hostData.type === 'finale') {
+            soundManager.play('applause', 0.3);
+        } else if (hostData.type === 'encouragement') {
+            soundManager.play('ding', 0.4);
+        } else {
+            soundManager.play('ding', 0.2);
+        }
     }
     
     // Remove after 4 seconds
@@ -216,47 +239,106 @@ function displayHostMessage(hostData) {
 
 // Reset round UI
 function resetRoundUI() {
-    answerSection.style.display = 'block';
-    votingSection.style.display = 'none';
-    resultsSection.style.display = 'none';
-    jokeInput.value = '';
-    jokeInput.disabled = false;
-    submitJokeBtn.disabled = false;
-    submitJokeBtn.textContent = 'Submit Joke';
+    if (answerSection) answerSection.style.display = 'block';
+    if (votingSection) votingSection.style.display = 'none';
+    if (resultsSection) resultsSection.style.display = 'none';
+    if (jokeInput) {
+        jokeInput.value = '';
+        jokeInput.disabled = false;
+    }
+    if (submitJokeBtn) {
+        submitJokeBtn.disabled = false;
+        submitJokeBtn.textContent = 'Submit Joke';
+    }
     gameState.hasSubmitted = false;
     gameState.hasVoted = false;
 }
 
-// Display round content
+// CRITICAL FIX: Enhanced display round content function with debugging
 function displayRoundContent(roundData) {
-    roundTitle.textContent = `Round ${roundData.round}: ${roundData.roundName}`;
+    console.log('🎯 DISPLAYING ROUND CONTENT:', roundData);
     
-    // Set description based on round type
+    // Check if all required elements exist
+    if (!roundTitle) {
+        console.error('❌ roundTitle element not found!');
+        return;
+    }
+    if (!roundDescription) {
+        console.error('❌ roundDescription element not found!');
+        return;
+    }
+    if (!promptDisplay) {
+        console.error('❌ promptDisplay element not found!');
+        return;
+    }
+    
+    // Set the round title
+    roundTitle.textContent = `Round ${roundData.round}: ${roundData.roundName}`;
+    console.log('✅ Set round title:', roundTitle.textContent);
+    
+    // Set description and content based on round type
     switch (roundData.roundType) {
         case 'punchlines':
             roundDescription.textContent = 'Write a setup for the given punchline';
             promptDisplay.innerHTML = `<div class="punchline-display">Punchline: "${roundData.content}"</div>`;
-            jokeInput.placeholder = 'Write your setup here...';
+            if (jokeInput) jokeInput.placeholder = 'Write your setup here...';
+            console.log('✅ Set punchline content:', roundData.content);
             break;
         case 'setups':
             roundDescription.textContent = 'Write a punchline for the given setup';
             promptDisplay.innerHTML = `<div class="setup-display">Setup: "${roundData.content}"</div>`;
-            jokeInput.placeholder = 'Write your punchline here...';
+            if (jokeInput) jokeInput.placeholder = 'Write your punchline here...';
+            console.log('✅ Set setup content:', roundData.content);
             break;
         case 'topics':
             roundDescription.textContent = 'Write a complete joke about the given topic';
             promptDisplay.innerHTML = `<div class="topic-display">Topic: "${roundData.content}"</div>`;
-            jokeInput.placeholder = 'Write your complete joke here...';
+            if (jokeInput) jokeInput.placeholder = 'Write your complete joke here...';
+            console.log('✅ Set topic content:', roundData.content);
             break;
+        default:
+            console.error('❌ Unknown round type:', roundData.roundType);
+            return;
+    }
+    
+    // Debug: Check if content was actually set
+    console.log('🔍 promptDisplay innerHTML after setting:', promptDisplay.innerHTML);
+    console.log('🔍 promptDisplay styles:', {
+        display: getComputedStyle(promptDisplay).display,
+        visibility: getComputedStyle(promptDisplay).visibility,
+        opacity: getComputedStyle(promptDisplay).opacity
+    });
+    
+    // Force visibility (backup method)
+    promptDisplay.style.display = 'block';
+    promptDisplay.style.visibility = 'visible';
+    promptDisplay.style.opacity = '1';
+    
+    // Double-check the inner content
+    const contentElement = promptDisplay.querySelector('.punchline-display, .setup-display, .topic-display');
+    if (contentElement) {
+        console.log('✅ Content element found and styled');
+        contentElement.style.display = 'block';
+        contentElement.style.visibility = 'visible';
+        contentElement.style.opacity = '1';
+    } else {
+        console.error('❌ Content element not found in promptDisplay');
     }
     
     gameState.currentContent = roundData.content;
     gameState.roundPhase = 'writing';
     resetRoundUI();
+    
+    console.log('🎯 Round content display complete');
 }
 
 // Display voting options
 function displayVotingOptions(submissions) {
+    if (!votingOptions) {
+        console.error('❌ votingOptions element not found');
+        return;
+    }
+    
     votingOptions.innerHTML = '';
     
     submissions.forEach((submission, index) => {
@@ -281,20 +363,27 @@ function displayVotingOptions(submissions) {
                     submissionId: submission.id
                 });
                 gameState.hasVoted = true;
-                soundManager.play('ding', 0.4);
+                if (typeof soundManager !== 'undefined') {
+                    soundManager.play('ding', 0.4);
+                }
             }
         });
         
         votingOptions.appendChild(optionElement);
     });
     
-    answerSection.style.display = 'none';
-    votingSection.style.display = 'block';
+    if (answerSection) answerSection.style.display = 'none';
+    if (votingSection) votingSection.style.display = 'block';
     gameState.roundPhase = 'voting';
 }
 
 // Display round results
 function displayResults(resultsData) {
+    if (!resultsDisplay) {
+        console.error('❌ resultsDisplay element not found');
+        return;
+    }
+    
     resultsDisplay.innerHTML = '';
     
     resultsData.results.forEach((result, index) => {
@@ -322,8 +411,8 @@ function displayResults(resultsData) {
     
     resultsDisplay.appendChild(scoresElement);
     
-    votingSection.style.display = 'none';
-    resultsSection.style.display = 'block';
+    if (votingSection) votingSection.style.display = 'none';
+    if (resultsSection) resultsSection.style.display = 'block';
     gameState.roundPhase = 'results';
 }
 
@@ -336,9 +425,11 @@ createRoomBtn.addEventListener('click', () => {
     }
     
     gameState.playerName = playerName.trim();
-    playerNameDisplay.textContent = gameState.playerName;
+    if (playerNameDisplay) playerNameDisplay.textContent = gameState.playerName;
     
-    soundManager.playSuccess();
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playSuccess();
+    }
     socket.emit('createRoom', { playerName: gameState.playerName });
 });
 
@@ -361,9 +452,11 @@ joinGameBtn.addEventListener('click', () => {
     }
     
     gameState.playerName = playerName.trim();
-    playerNameDisplay.textContent = gameState.playerName;
+    if (playerNameDisplay) playerNameDisplay.textContent = gameState.playerName;
     
-    soundManager.playSuccess();
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playSuccess();
+    }
     socket.emit('joinRoom', { roomCode, playerName: gameState.playerName });
 });
 
@@ -377,29 +470,35 @@ startGameBtn.addEventListener('click', () => {
         return;
     }
     
-    soundManager.playDrumroll();
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playDrumroll();
+    }
     socket.emit('startGame', { roomCode: gameState.roomCode });
 });
 
 // Submit joke/answer
-submitJokeBtn.addEventListener('click', () => {
-    const answer = jokeInput.value.trim();
-    if (!answer) {
-        alert('Please write something before submitting!');
-        return;
-    }
-    
-    if (gameState.hasSubmitted) {
-        return;
-    }
-    
-    socket.emit('submitAnswer', {
-        roomCode: gameState.roomCode,
-        answer: answer
+if (submitJokeBtn) {
+    submitJokeBtn.addEventListener('click', () => {
+        const answer = jokeInput.value.trim();
+        if (!answer) {
+            alert('Please write something before submitting!');
+            return;
+        }
+        
+        if (gameState.hasSubmitted) {
+            return;
+        }
+        
+        socket.emit('submitAnswer', {
+            roomCode: gameState.roomCode,
+            answer: answer
+        });
+        
+        if (typeof soundManager !== 'undefined') {
+            soundManager.play('ding', 0.5);
+        }
     });
-    
-    soundManager.play('ding', 0.5);
-});
+}
 
 // Socket event listeners
 socket.on('roomCreated', ({ roomCode, isHost, players }) => {
@@ -407,7 +506,7 @@ socket.on('roomCreated', ({ roomCode, isHost, players }) => {
     gameState.isHost = isHost;
     gameState.players = players;
     
-    roomCodeDisplay.textContent = roomCode;
+    if (roomCodeDisplay) roomCodeDisplay.textContent = roomCode;
     updatePlayerList();
     showHostScreen();
     
@@ -428,7 +527,9 @@ socket.on('roomJoined', ({ roomCode, isHost, players }) => {
 socket.on('playerJoined', ({ players }) => {
     gameState.players = players;
     updatePlayerList();
-    soundManager.play('ding', 0.3);
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('ding', 0.3);
+    }
     console.log('A new player joined the room');
 });
 
@@ -446,7 +547,9 @@ socket.on('hostChanged', ({ newHost, players }) => {
         gameState.isHost = true;
         alert('You are now the host!');
         showHostScreen();
-        soundManager.playSuccess();
+        if (typeof soundManager !== 'undefined') {
+            soundManager.playSuccess();
+        }
     }
     
     console.log(`${newHost} is now the host`);
@@ -470,23 +573,32 @@ socket.on('gameStarting', ({ message, totalPlayers }) => {
         }, 3000);
     }
     
-    soundManager.play('applause', 0.4);
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('applause', 0.4);
+    }
     alert(message);
     console.log('Game starting with', totalPlayers, 'players');
 });
 
 socket.on('roundStarted', (roundData) => {
+    console.log('🎯 ROUND STARTED EVENT RECEIVED:', roundData);
     displayRoundContent(roundData);
-    soundManager.playDrumroll();
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playDrumroll();
+    }
     console.log(`Round ${roundData.round} started:`, roundData.roundName);
 });
 
 socket.on('submissionReceived', () => {
     gameState.hasSubmitted = true;
-    jokeInput.disabled = true;
-    submitJokeBtn.disabled = true;
-    submitJokeBtn.textContent = 'Submitted!';
-    soundManager.play('ding', 0.6);
+    if (jokeInput) jokeInput.disabled = true;
+    if (submitJokeBtn) {
+        submitJokeBtn.disabled = true;
+        submitJokeBtn.textContent = 'Submitted!';
+    }
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('ding', 0.6);
+    }
 });
 
 socket.on('submissionUpdate', ({ submitted, total }) => {
@@ -496,12 +608,16 @@ socket.on('submissionUpdate', ({ submitted, total }) => {
 
 socket.on('votingStarted', ({ submissions, timeLimit }) => {
     displayVotingOptions(submissions);
-    soundManager.play('drumroll', 0.3);
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('drumroll', 0.3);
+    }
     console.log('Voting started with', submissions.length, 'submissions');
 });
 
 socket.on('voteReceived', () => {
-    soundManager.play('ding', 0.4);
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('ding', 0.4);
+    }
     console.log('Vote submitted successfully');
 });
 
@@ -519,7 +635,7 @@ socket.on('roundResults', (resultsData) => {
     displayResults(resultsData);
     
     // Play reaction for the winner
-    if (resultsData.results.length > 0) {
+    if (resultsData.results.length > 0 && typeof soundManager !== 'undefined') {
         const topVotes = resultsData.results[0].votes;
         const totalPlayers = gameState.players.length;
         
@@ -542,7 +658,9 @@ socket.on('roundResults', (resultsData) => {
 socket.on('gameEnded', ({ winner, finalScores }) => {
     gameState.gameStarted = false;
     
-    soundManager.play('applause');
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('applause');
+    }
     if (audienceReaction) {
         audienceReaction.innerHTML = '🏆👏🎉';
         audienceReaction.className = 'audience-reaction applause';
@@ -563,7 +681,9 @@ socket.on('gameEnded', ({ winner, finalScores }) => {
 });
 
 socket.on('error', ({ message }) => {
-    soundManager.play('crickets', 0.2);
+    if (typeof soundManager !== 'undefined') {
+        soundManager.play('crickets', 0.2);
+    }
     alert(`Error: ${message}`);
     console.error('Socket error:', message);
 });
@@ -579,14 +699,44 @@ socket.on('disconnect', () => {
 
 // Add click sounds to all buttons
 document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('btn')) {
+    if (e.target.classList.contains('btn') && typeof soundManager !== 'undefined') {
         soundManager.play('ding', 0.3);
     }
 });
 
+// Debug function to manually test content display
+window.debugDisplayContent = function() {
+    const testData = {
+        round: 1,
+        roundName: "Setup Battle",
+        roundType: "punchlines",
+        content: "...and that's when I realized I was at the wrong funeral."
+    };
+    console.log('🔧 Testing content display with:', testData);
+    displayRoundContent(testData);
+};
+
 // Initialize everything when the page loads
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🎯 DOM Content Loaded');
+    
+    // Check if all required elements exist
+    const requiredElements = [
+        'landing-page', 'room-join-page', 'host-screen', 'player-screen', 'game-round-screen',
+        'round-title', 'round-description', 'prompt-display', 'joke-input', 'submit-joke-btn'
+    ];
+    
+    requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.error(`❌ Required element not found: ${id}`);
+        } else {
+            console.log(`✅ Found element: ${id}`);
+        }
+    });
+    
     initializeSoundControls();
     showLandingPage();
     console.log('StandUp Showdown client loaded successfully!');
+    console.log('🔧 You can test content display by typing: debugDisplayContent() in the console');
 });

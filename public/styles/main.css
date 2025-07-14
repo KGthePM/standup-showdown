@@ -45,6 +45,41 @@ h1 {
     color: var(--accent-color);
 }
 
+/* Sound controls styling */
+.sound-controls {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.sound-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.sound-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sound-btn.muted {
+    opacity: 0.5;
+}
+
+.volume-slider {
+    width: 100px;
+    height: 5px;
+    background: #ddd;
+    outline: none;
+    border-radius: 5px;
+}
+
 .main-section {
     display: flex;
     flex-direction: column;
@@ -147,6 +182,15 @@ input:focus, textarea:focus {
     display: none;
 }
 
+/* CRITICAL FIX: Ensure game round screen is properly hidden/shown */
+.game-round {
+    display: none;
+}
+
+#game-round-screen {
+    display: none;
+}
+
 /* Audience display styles */
 .audience {
     height: 150px;
@@ -168,6 +212,16 @@ input:focus, textarea:focus {
     color: var(--accent-color);
     font-size: 1.5rem;
     z-index: 1;
+}
+
+/* Audience reaction container */
+.audience-reaction {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    z-index: 2;
 }
 
 /* Audience reaction animations */
@@ -300,6 +354,16 @@ input:focus, textarea:focus {
     line-height: 1.4;
 }
 
+/* Host message overlay for temporary messages */
+.host-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    pointer-events: none;
+}
+
 /* Reaction bubble styles */
 .reaction-bubble {
     position: fixed;
@@ -396,12 +460,23 @@ input:focus, textarea:focus {
     font-size: 1.2rem;
 }
 
+/* CRITICAL FIX: Content box and prompt display */
 .content-box {
     background-color: rgba(255, 255, 255, 0.05);
     padding: 15px;
     border-radius: 8px;
     margin: 15px 0;
     animation: fadeIn 0.5s ease;
+    min-height: 60px;
+    display: block !important;
+    visibility: visible !important;
+}
+
+#prompt-display {
+    display: block !important;
+    width: 100%;
+    min-height: 40px;
+    visibility: visible !important;
 }
 
 @keyframes fadeIn {
@@ -409,16 +484,23 @@ input:focus, textarea:focus {
     to { opacity: 1; }
 }
 
+/* CRITICAL FIX: Enhanced content display styling */
 .punchline-display, .setup-display, .topic-display {
-    font-style: italic;
-    font-size: 1.1rem;
-    color: var(--accent-color);
-    margin: 10px 0;
-    padding: 15px;
-    background-color: rgba(255, 193, 7, 0.1);
-    border-radius: 5px;
-    border-left: 4px solid var(--accent-color);
-    animation: slideInFromLeft 0.5s ease;
+    font-style: italic !important;
+    font-size: 1.1rem !important;
+    color: var(--accent-color) !important;
+    margin: 10px 0 !important;
+    padding: 15px !important;
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    border-radius: 5px !important;
+    border-left: 4px solid var(--accent-color) !important;
+    animation: slideInFromLeft 0.5s ease !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    line-height: 1.4 !important;
+    word-wrap: break-word !important;
+    white-space: normal !important;
 }
 
 @keyframes slideInFromLeft {
@@ -480,6 +562,26 @@ input:focus, textarea:focus {
 .voting-option {
     margin: 10px 0;
     animation: slideInFromRight 0.5s ease;
+}
+
+.vote-option {
+    margin: 10px 0;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.vote-option:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.02);
+}
+
+.vote-option.selected {
+    border-color: var(--accent-color);
+    background-color: rgba(255, 193, 7, 0.2);
 }
 
 @keyframes slideInFromRight {
