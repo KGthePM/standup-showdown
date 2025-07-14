@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truth Tales - StandUp Showdown</title>
+    <style>
+        :root {
+            --primary-color: #9c27b0;
+            --secondary-color: #2196f3;
+            --background-color: #1a1a1a;
+            --text-color: #ffffff;
+            --accent-color: #e91e63;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--background-color) 0%, #2c1810 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            font-style: italic;
+        }
+
+        .main-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(156, 39, 176, 0.3);
+            border: 2px solid rgba(156, 39, 176, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(156, 39, 176, 0.4);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, var(--secondary-color), #1976d2);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 8px 25px rgba(33, 150, 243, 0.4);
+        }
+
+        input, textarea {
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(156, 39, 176, 0.3);
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 15px;
+            color: var(--text-color);
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(156, 39, 176, 0.3);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .landing, .room-join, .host-screen, .player-screen, .game-screen {
+            display: none;
+        }
+
+        .landing {
+            display: flex;
+        }
+
+        .player-list {
+            text-align: left;
+            margin: 20px 0;
+        }
+
+        .player-item {
+            padding: 10px;
+            margin: 8px 0;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .host-tag {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .topic-display {
+            background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(233, 30, 99, 0.2));
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid var(--primary-color);
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .story-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .story-item:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(156, 39, 176, 0.2);
+            transform: scale(1.02);
+        }
+
+        .story-item.selected {
+            border-color: var(--accent-color);
+            background-color: rgba(233, 30, 99, 0.3);
+        }
+
+        .results-section {
+            margin: 20px 0;
+        }
+
+        .result-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .result-story {
+            font-style: italic;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--accent-color);
+        }
+
+        .result-author {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .guess-list {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .correct-guess {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .wrong-guess {
+            color: var(--warning-color);
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(156, 39, 176, 0.2));
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .phase-indicator {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        .detective-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            animation: detective-bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes detective-bounce {
+            0%, 100% { transform: translateY(0) rotate(-5deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
+        }
+
+        .truth-meter {
+            width: 100%;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .truth-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+                max-width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🕵️ Truth Tales 🕵️</h1>
+            <p class="tagline">Guess whose embarrassing story is whose!</p>
+        </header>
+        
+        <!-- Landing Page -->
+        <section class="main-section landing" id="landing-page">
+            <div class="card">
+                <div class="detective-icon">🕵️‍♂️</div>
+                <h2>Welcome to Truth Tales</h2>
+                <p>Share your most embarrassing true stories anonymously, then try to guess whose disaster belongs to whom!</p>
+                <button class="btn" id="create-room-btn">Create Room</button>
+                <button class="btn btn-secondary" id="join-room-btn">Join Room</button>
+            </div>
+        </section>
+        
+        <!-- Room Joining Section -->
+        <section class="main-section room-join" id="room-join-page">
+            <div class="card">
+                <h2>Join a Room</h2>
+                <p>Enter the room code to join the investigation</p>
+                <input type="text" id="room-code-input" placeholder="Enter 4-letter code" maxlength="4">
+                <input type="text" id="player-name-input" placeholder="Your detective name">
+                <button class="btn" id="join-game-btn">Join Investigation</button>
+                <button class="btn btn-secondary" id="back-btn">Back</button>
+            </div>
+        </section>
+        
+        <!-- Host Screen -->
+        <section class="main-section host-screen" id="host-screen">
+            <div class="card">
+                <h2>Room Code: <span id="room-code-display">ABCD</span></h2>
+                <p>Detectives joined: <span id="player-count">0</span>/8</p>
+                <div class="player-list" id="player-list"></div>
+                <button class="btn" id="start-game-btn">Start Investigation</button>
+            </div>
+        </section>
+        
+        <!-- Player Screen -->
+        <section class="main-section player-screen" id="player-screen">
+            <div class="card">
+                <h2>Welcome, Detective <span id="player-name-display">Player</span>!</h2>
+                <p>Waiting for the investigation to begin...</p>
+                <div id="game-status"></div>
+            </div>
+        </section>
+        
+        <!-- Game Screen -->
+        <section class="main-section game-screen" id="game-screen">
+            <div class="card">
+                <div class="phase-indicator" id="phase-indicator">Story Writing Phase</div>
+                
+                <!-- Story Writing Phase -->
+                <div id="story-writing-section">
+                    <h3>Round <span id="round-number">1</span> of 3</h3>
+                    <div class="topic-display" id="topic-display">
+                        Your embarrassing story topic will appear here...
+                    </div>
+                    <p><strong>Write a TRUE story about this topic!</strong></p>
+                    <p>Be honest, be funny, and remember - everyone will try to guess it's yours!</p>
+                    <textarea id="story-input" placeholder="Write your embarrassing true story here... Remember, it has to be TRUE!"></textarea>
+                    <button class="btn" id="submit-story-btn">Submit My Shame</button>
+                    <div id="submission-status"></div>
+                </div>
+                
+                <!-- Guessing Phase -->
+                <div id="guessing-section" style="display: none;">
+                    <h3>Detective Time!</h3>
+                    <p>Read each story and guess who wrote it. You get points for correct guesses!</p>
+                    <div id="stories-to-guess"></div>
+                    <div id="player-options"></div>
+                    <button class="btn" id="submit-guesses-btn" style="display: none;">Submit All Guesses</button>
+                </div>
+                
+                <!-- Results Phase -->
+                <div id="results-section" style="display: none;">
+                    <h3>The Truth Revealed!</h3>
+                    <div class="results-section" id="round-results"></div>
+                    <div class="score-display" id="current-scores"></div>
+                </div>
+                
+                <!-- Final Results -->
+                <div id="final-results-section" style="display: none;">
+                    <h3>🏆 Master Detective Revealed! 🏆</h3>
+                    <div id="final-scores"></div>
+                    <button class="btn" id="play-again-btn">Play Again</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Initialize socket connection
+        const socket = io();
+
+        // Game state
+        let gameState = {
+            roomCode: '',
+            playerName: '',
+            isHost: false,
+            players: [],
+            currentRound: 0,
+            phase: 'waiting',
+            currentTopic: '',
+            stories: [],
+            currentGuesses: {},
+            hasSubmittedStory: false
+        };
+
+        // DOM elements
+        const landingPage = document.getElementById('landing-page');
+        const roomJoinPage = document.getElementById('room-join-page');
+        const hostScreen = document.getElementById('host-screen');
+        const playerScreen = document.getElementById('player-screen');
+        const gameScreen = document.getElementById('game-screen');
+
+        // Navigation functions
+        function showLandingPage() {
+            hideAllSections();
+            landingPage.style.display = 'flex';
+        }
+
+        function showRoomJoinPage() {
+            hideAllSections();
+            roomJoinPage.style.display = 'flex';
+        }
+
+        function showHostScreen() {
+            hideAllSections();
+            hostScreen.style.display = 'flex';
+        }
+
+        function showPlayerScreen() {
+            hideAllSections();
+            playerScreen.style.display = 'flex';
+        }
+
+        function showGameScreen() {
+            hideAllSections();
+            gameScreen.style.display = 'flex';
+        }
+
+        function hideAllSections() {
+            landingPage.style.display = 'none';
+            roomJoinPage.style.display = 'none';
+            hostScreen.style.display = 'none';
+            playerScreen.style.display = 'none';
+            gameScreen.style.display = 'none';
+        }
+
+        // Update player list
+        function updatePlayerList() {
+            const playerList = document.getElementById('player-list');
+            const playerCount = document.getElementById('player-count');
+            
+            if (playerList) {
+                playerList.innerHTML = '';
+                gameState.players.forEach(player => {
+                    const playerElement = document.createElement('div');
+                    playerElement.className = 'player-item';
+                    if (player.isHost) {
+                        playerElement.innerHTML = `${player.name} <span class="host-tag">(Chief Detective)</span>`;
+                    } else {
+                        playerElement.textContent = player.name;
+                    }
+                    playerList.appendChild(playerElement);
+                });
+            }
+            
+            if (playerCount) {
+                playerCount.textContent = gameState.players.length;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('create-room-btn').addEventListener('click', () => {
+            const playerName = prompt('Enter your detective name:');
+            if (!playerName || playerName.trim().length < 2) {
+                alert('Please enter a valid name (at least 2 characters)');
+                return;
+            }
+            
+            gameState.playerName = playerName.trim();
+            socket.emit('createRoom', { playerName: gameState.playerName });
+        });
+
+        document.getElementById('join-room-btn').addEventListener('click', () => {
+            showRoomJoinPage();
+        });
+
+        document.getElementById('join-game-btn').addEventListener('click', () => {
+            const roomCode = document.getElementById('room-code-input').value.toUpperCase().trim();
+            const playerName = document.getElementById('player-name-input').value.trim();
+            
+            if (roomCode.length !== 4) {
+                alert('Room code must be 4 letters');
+                return;
+            }
+            
+            if (!playerName || playerName.trim().length < 2) {
+                alert('Please enter a valid detective name');
+                return;
+            }
+            
+            gameState.playerName = playerName.trim();
+            socket.emit('joinRoom', { roomCode, playerName: gameState.playerName });
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            showLandingPage();
+        });
+
+        document.getElementById('start-game-btn').addEventListener('click', () => {
+            if (gameState.players.length < 3) {
+                alert('Need at least 3 detectives to start the investigation');
+                return;
+            }
+            
+            socket.emit('startGame', { roomCode: gameState.roomCode });
+        });
+
+        document.getElementById('submit-story-btn').addEventListener('click', () => {
+            const story = document.getElementById('story-input').value.trim();
+            if (!story || story.length < 10) {
+                alert('Please write a longer story (at least 10 characters)');
+                return;
+            }
+            
+            socket.emit('submitStory', {
+                roomCode: gameState.roomCode,
+                story: story
+            });
+            
+            gameState.hasSubmittedStory = true;
+            document.getElementById('story-input').disabled = true;
+            document.getElementById('submit-story-btn').disabled = true;
+            document.getElementById('submit-story-btn').textContent = 'Story Submitted!';
+            document.getElementById('submission-status').textContent = 'Your embarrassing truth has been recorded! 📝';
+        });
+
+        // Socket event listeners
+        socket.on('roomCreated', ({ roomCode, isHost, players }) => {
+            gameState.roomCode = roomCode;
+            gameState.isHost = isHost;
+            gameState.players = players;
+            
+            document.getElementById('room-code-display').textContent = roomCode;
+            document.getElementById('player-name-display').textContent = gameState.playerName;
+            updatePlayerList();
+            showHostScreen();
+        });
+
+        socket.on('roomJoined', ({ roomCode, isHost, players }) => {
+            gameState.roomCode = roomCode;
+            gameState.isHost = isHost;
+            gameState.players = players;
+            
+            document.getElementById('player-name-display').textContent = gameState.playerName;
+            updatePlayerList();
+            showPlayerScreen();
+        });
+
+        socket.on('playerJoined', ({ players }) => {
+            gameState.players = players;
+            updatePlayerList();
+        });
+
+        socket.on('playerLeft', ({ playerName, players }) => {
+            gameState.players = players;
+            updatePlayerList();
+        });
+
+        socket.on('gameStarted', ({ message, topic, phase }) => {
+            gameState.phase = phase;
+            gameState.currentTopic = topic;
+            gameState.currentRound = 1;
+            
+            document.getElementById('topic-display').textContent = topic;
+            document.getElementById('round-number').textContent = '1';
+            document.getElementById('phase-indicator').textContent = 'Story Writing Phase';
+            
+            showGameScreen();
+            alert(message);
+        });
+
+        socket.on('storySubmitted', () => {
+            console.log('Story submitted successfully!');
+        });
+
+        socket.on('guessingPhase', ({ stories, players }) => {
+            gameState.stories = stories;
+            gameState.phase = 'guessing';
+            
+            // Hide story writing section
+            document.getElementById('story-writing-section').style.display = 'none';
+            
+            // Show guessing section
+            document.getElementById('guessing-section').style.display = 'block';
+            document.getElementById('phase-indicator').textContent = 'Detective Phase - Make Your Guesses!';
+            
+            // Display stories for guessing
+            const storiesContainer = document.getElementById('stories-to-guess');
+            storiesContainer.innerHTML = '';
+            
+            stories.forEach((story, index) => {
+                const storyDiv = document.createElement('div');
+                storyDiv.className = 'story-item';
+                storyDiv.innerHTML = `
+                    <h4>Story #${index + 1}</h4>
+                    <p class="result-story">"${story.text}"</p>
+                    <div class="player-select">
+                        <label>Who wrote this?</label>
+                        <select class="guess-select" data-story-id="${story.id}">
+                            <option value="">Select detective...</option>
+                            ${players.map(player => `<option value="${player.id}">${player.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+                storiesContainer.appendChild(storyDiv);
+            });
+            
+            // Show submit button when all guesses are made
+            document.querySelectorAll('.guess-select').forEach(select => {
+                select.addEventListener('change', checkAllGuesses);
+            });
+        });
+
+        function checkAllGuesses() {
+            const selects = document.querySelectorAll('.guess-select');
+            const allFilled = Array.from(selects).every(select => select.value !== '');
+            
+            if (allFilled) {
+                document.getElementById('submit-guesses-btn').style.display = 'block';
+                
+                // Prepare guesses
+                gameState.currentGuesses = {};
+                selects.forEach(select => {
+                    const storyId = parseInt(select.dataset.storyId);
+                    const guessedAuthorId = select.value;
+                    gameState.currentGuesses[storyId] = guessedAuthorId;
+                });
+            }
+        }
+
+        document.getElementById('submit-guesses-btn').addEventListener('click', () => {
+            // Submit all guesses
+            Object.entries(gameState.currentGuesses).forEach(([storyId, guessedAuthorId]) => {
+                socket.emit('submitGuess', {
+                    roomCode: gameState.roomCode,
+                    storyId: parseInt(storyId),
+                    guessedAuthorId: guessedAuthorId
+                });
+            });
+            
+            document.getElementById('submit-guesses-btn').disabled = true;
+            document.getElementById('submit-guesses-btn').textContent = 'Guesses Submitted!';
+        });
+
+        socket.on('roundResults', ({ results, scores }) => {
+            // Hide guessing section
+            document.getElementById('guessing-section').style.display = 'none';
+            
+            // Show results section
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('phase-indicator').textContent = 'Round Results - The Truth Revealed!';
+            
+            // Display results
+            const resultsContainer = document.getElementById('round-results');
+            resultsContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result-item';
+                resultDiv.innerHTML = `
+                    <div class="result-story">"${result.story}"</div>
+                    <div class="result-author">Actually written by: ${result.author}</div>
+                    <div class="guess-list">
+                        Correct guesses: ${result.correctGuesses}/${result.totalGuesses}
+                        <br>
+                        ${result.guesses.map(guess => 
+                            `<span class="${guess.correct ? 'correct-guess' : 'wrong-guess'}">
+                                ${guess.guesser} guessed: ${guess.guessedAuthor}
+                            </span>`
+                        ).join('<br>')}
+                    </div>
+                `;
+                resultsContainer.appendChild(resultDiv);
+            });
+            
+            // Display current scores
+            const scoresContainer = document.getElementById('current-scores');
+            scoresContainer.innerHTML = `
+                <h4>Current Scores:</h4>
+                ${scores.map((score, index) => 
+                    `<div>${index + 1}. ${score.name}: ${score.score} points</div>`
+                ).join('')}
+            `;
+        });
+
+        socket.on('nextRound', ({ round, topic, phase }) => {
+            gameState.currentRound = round;
+            gameState.currentTopic = topic;
+            gameState.phase = phase;
+            gameState.hasSubmittedStory = false;
+            
+            // Reset UI
+            document.getElementById('results-section').style.display = 'none';
+            document.getElementById('story-writing-section').style.display = 'block';
+            document.getElementById('phase-indicator').textContent = 'Story Writing Phase';
+            
+            // Update content
+            document.getElementById('round-number').textContent = round;
+            document.getElementById('topic-display').textContent = topic;
+            document.getElementById('story-input').value = '';
+            document.getElementById('story-input').disabled = false;
+            document.getElementById('submit-story-btn').disabled = false;
+            document.getElementById('submit-story-btn').textContent = 'Submit My Shame';
+            document.getElementById('submission-status').textContent = '';
+        });
+
+        socket.on('gameEnded', ({ winner, finalScores }) => {
+            // Hide all other sections
+            document.getElementById('results-section').style.display = 'none';
+            
+            // Show final results
+            document.getElementById('final-results-section').style.display = 'block';
+            document.getElementById('phase-indicator').textContent = 'Investigation Complete!';
+            
+            const finalScoresContainer = document.getElementById('final-scores');
+            finalScoresContainer.innerHTML = `
+                <div class="score-display">
+                    <h3>🏆 Master Detective: ${winner.name} with ${winner.score} points! 🏆</h3>
+                </div>
+                <h4>Final Standings:</h4>
+                ${finalScores.map((score, index) => 
+                    `<div class="score-display">
+                        ${index + 1}. ${score.name}: ${score.score} points
+                    </div>`
+                ).join('')}
+            `;
+        });
+
+        socket.on('error', ({ message }) => {
+            alert(`Error: ${message}`);
+        });
+
+        // Initialize
+        showLandingPage();
+    </script>
+</body>
+</html>

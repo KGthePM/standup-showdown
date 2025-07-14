@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StandUp Showdown - Game Hub</title>
+    <style>
+        :root {
+            --primary-color: #ff5722;
+            --secondary-color: #2196f3;
+            --background-color: #1e1e1e;
+            --text-color: #ffffff;
+            --accent-color: #ffc107;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --purple-accent: #9c27b0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--background-color) 0%, #2c2c2c 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 0;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 87, 34, 0.3); }
+            to { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 87, 34, 0.6); }
+        }
+
+        .tagline {
+            font-size: 1.4rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #ccc;
+            margin-bottom: 30px;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .game-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid transparent;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: -1;
+        }
+
+        .game-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--primary-color);
+            box-shadow: 0 15px 40px rgba(255, 87, 34, 0.3);
+        }
+
+        .game-card.truth-tales::before {
+            background: linear-gradient(135deg, var(--purple-accent), var(--secondary-color));
+        }
+
+        .game-card.truth-tales:hover {
+            border-color: var(--purple-accent);
+            box-shadow: 0 15px 40px rgba(156, 39, 176, 0.3);
+        }
+
+        .game-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .game-title {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .game-description {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: #ddd;
+        }
+
+        .game-features {
+            text-align: left;
+            margin: 20px 0;
+        }
+
+        .game-features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .game-features li {
+            padding: 8px 0;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .game-features li::before {
+            content: '🎭';
+            position: absolute;
+            left: 0;
+            top: 8px;
+        }
+
+        .truth-tales .game-features li::before {
+            content: '🕵️';
+        }
+
+        .play-btn {
+            background: linear-gradient(45deg, var(--primary-color), #e64a19);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .truth-tales .play-btn {
+            background: linear-gradient(45deg, var(--purple-accent), #7b1fa2);
+            box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+        }
+
+        .play-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .play-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .play-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 87, 34, 0.4);
+        }
+
+        .truth-tales .play-btn:hover {
+            box-shadow: 0 8px 25px rgba(156, 39, 176, 0.4);
+        }
+
+        .play-btn:disabled {
+            background: linear-gradient(45deg, #666, #555);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-available {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .status-coming-soon {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 30px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer p {
+            color: #aaa;
+            font-size: 1rem;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .game-card {
+                padding: 20px;
+            }
+
+            .game-title {
+                font-size: 1.5rem;
+            }
+
+            .game-description {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 StandUp Showdown 🎭</h1>
+            <p class="tagline">Where Comedy Meets Competition</p>
+            <p class="subtitle">Choose Your Comedy Adventure</p>
+        </header>
+
+        <div class="games-grid">
+            <!-- Original Game -->
+            <div class="game-card">
+                <span class="status-badge status-available">Available Now</span>
+                <div class="game-icon">🎤</div>
+                <h2 class="game-title">Joke Factory</h2>
+                <p class="game-description">
+                    The original comedy battle! Create setups, punchlines, and full jokes while a virtual host guides you through three hilarious rounds.
+                </p>
+                <div class="game-features">
+                    <ul>
+                        <li>Setup Battle - Write setups for punchlines</li>
+                        <li>Punchline Challenge - Create killer punchlines</li>
+                        <li>Full Joke Creation - Complete comedy gold</li>
+                        <li>Live audience reactions & scoring</li>
+                        <li>3-6 players, mobile-friendly</li>
+                    </ul>
+                </div>
+                <button class="play-btn" onclick="playJokeFactory()">
+                    Play Joke Factory
+                </button>
+            </div>
+
+            <!-- New Truth Tales Game -->
+            <div class="game-card truth-tales">
+                <span class="status-badge status-available">Available Now</span>
+                <div class="game-icon">🕵️</div>
+                <h2 class="game-title">Truth Tales</h2>
+                <p class="game-description">
+                    Share your most embarrassing true stories anonymously, then guess whose hilarious disaster belongs to whom!
+                </p>
+                <div class="game-features">
+                    <ul>
+                        <li>Submit real personal comedy stories</li>
+                        <li>Anonymous story sharing</li>
+                        <li>Guess who wrote what</li>
+                        <li>Points for correct guesses & misdirection</li>
+                        <li>3-8 players, friendship-testing fun</li>
+                    </ul>
+                </div>
+                <button class="play-btn" onclick="playTruthTales()">
+                    Play Truth Tales
+                </button>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>🎭 More games coming soon! Got ideas? Let us know! 🎭</p>
+        </footer>
+    </div>
+
+    <script>
+        // Navigation functions
+        function playJokeFactory() {
+            // Navigate to Joke Factory through the hub
+            window.location.href = '/joke-factory/';
+        }
+
+        function playTruthTales() {
+            // Navigate to Truth Tales through the hub
+            window.location.href = '/truth-tales/';
+        }
+
+        // Add click sound effects
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('play-btn') && !e.target.disabled) {
+                console.log('🎵 *click sound*');
+            }
+        });
+    </script>
+</body>
+</html>
