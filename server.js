@@ -8,22 +8,12 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// CRITICAL FIX: Serve static files from public directory for the game
-app.use('/game', express.static(path.join(__dirname, 'public')));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
-// CRITICAL FIX: Serve the landing page as the main route
+// Basic route
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Route to serve Joke Factory game
-app.get('/joke-factory', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Add a redirect for legacy URLs
-app.get('/game', (req, res) => {
-    res.redirect('/joke-factory');
 });
 
 // Game rooms storage
@@ -733,7 +723,6 @@ io.on('connection', (socket) => {
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🎤 Joke Factory server running on port ${PORT}`);
-    console.log(`🏠 Landing page: https://your-railway-url.com/`);
-    console.log(`🎮 Joke Factory: https://your-railway-url.com/joke-factory`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Open your browser to http://localhost:${PORT}`);
 });

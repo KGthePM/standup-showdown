@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StandUp Showdown - Online Comedy Party Game</title>
+    <title>StandUp Showdown - Comedy Party Game Platform</title>
     <style>
         :root {
             --primary-color: #ff5722;
@@ -163,10 +163,6 @@
             color: white;
         }
 
-        .status-badge.coming-soon {
-            background: #ff9800;
-        }
-
         .game-card {
             position: relative;
         }
@@ -193,7 +189,7 @@
             line-height: 1.5;
         }
 
-        .online-notice {
+        .local-notice {
             background: linear-gradient(45deg, #4caf50, #45a049);
             color: white;
             padding: 15px;
@@ -227,10 +223,10 @@
     <div class="container">
         <h1>🎭 StandUp Showdown 🎭</h1>
         <p class="tagline">Where Comedy Meets Competition</p>
-        <p class="subtitle">Play Online with Friends Anywhere!</p>
+        <p class="subtitle">Choose Your Comedy Adventure!</p>
 
-        <div class="online-notice">
-            🌐 Now Live Online! Share this link with friends to play together from anywhere!
+        <div class="local-notice">
+            🎮 Local Development Mode - Both Games Available!
         </div>
 
         <div class="games-grid">
@@ -242,48 +238,51 @@
                 <p class="game-description">
                     The original comedy battle! Create setups, punchlines, and full jokes while a virtual host guides you through three hilarious rounds.
                 </p>
-                <a href="/joke-factory" class="play-btn">
+                <button class="play-btn" onclick="playJokeFactory()">
                     Play Joke Factory
-                </a>
+                </button>
             </div>
 
             <!-- Truth Tales Game -->
             <div class="game-card truth-tales" onclick="playTruthTales()">
-                <span class="status-badge coming-soon">Coming Soon</span>
+                <span class="status-badge">Live</span>
                 <div class="game-icon">🕵️</div>
                 <h2 class="game-title">Truth Tales</h2>
                 <p class="game-description">
                     Share your most embarrassing true stories anonymously, then guess whose hilarious disaster belongs to whom!
                 </p>
-                <div class="play-btn" style="opacity: 0.6; cursor: not-allowed;">
-                    Coming Soon
-                </div>
+                <button class="play-btn" onclick="playTruthTales()">
+                    Play Truth Tales
+                </button>
             </div>
         </div>
 
         <div class="instructions">
-            <h3>🚀 How to Play Online:</h3>
+            <h3>🚀 How to Play Locally:</h3>
             <ol>
                 <li><strong>Choose a game</strong> by clicking on it above</li>
                 <li><strong>Click "Create Room"</strong> to host a game</li>
                 <li><strong>Share the 4-letter room code</strong> with your friends</li>
-                <li><strong>Friends visit this same website</strong> and click "Join Room"</li>
+                <li><strong>Friends open the same game URL</strong> and click "Join Room"</li>
                 <li><strong>Enter the room code</strong> and start playing!</li>
             </ol>
             <p style="margin-top: 15px; color: var(--accent-color);">
-                💡 <strong>Tip:</strong> Works on phones, tablets, and computers! Everyone can play from their own device.
+                💡 <strong>Game URLs:</strong><br>
+                🎤 Joke Factory: <code>http://localhost:3000</code><br>
+                🕵️ Truth Tales: <code>http://localhost:3002</code>
             </p>
         </div>
     </div>
 
     <script>
         function playJokeFactory() {
-            window.location.href = '/joke-factory';
+            // Open Joke Factory on port 3000
+            window.open('http://localhost:3000', '_blank');
         }
 
         function playTruthTales() {
-            // Coming soon
-            alert('🕵️ Truth Tales coming soon! For now, enjoy Joke Factory!');
+            // Open Truth Tales on port 3002
+            window.open('http://localhost:3002', '_blank');
         }
     </script>
 </body>
