@@ -107,7 +107,7 @@
             box-shadow: 0 8px 25px rgba(33, 150, 243, 0.4);
         }
 
-        input, textarea {
+        input, textarea, select {
             padding: 15px;
             border-radius: 10px;
             border: 2px solid rgba(156, 39, 176, 0.3);
@@ -119,7 +119,7 @@
             backdrop-filter: blur(5px);
         }
 
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 20px rgba(156, 39, 176, 0.3);
@@ -130,11 +130,28 @@
             resize: vertical;
         }
 
+        /* Section visibility - CRITICAL FIX */
         .landing, .room-join, .host-screen, .player-screen, .game-screen {
             display: none;
         }
 
-        .landing {
+        .landing.active {
+            display: flex;
+        }
+
+        .room-join.active {
+            display: flex;
+        }
+
+        .host-screen.active {
+            display: flex;
+        }
+
+        .player-screen.active {
+            display: flex;
+        }
+
+        .game-screen.active {
             display: flex;
         }
 
@@ -164,6 +181,7 @@
             border: 2px solid var(--primary-color);
             font-size: 1.2rem;
             text-align: center;
+            font-weight: bold;
         }
 
         .story-item {
@@ -172,19 +190,62 @@
             padding: 20px;
             margin: 15px 0;
             border: 2px solid transparent;
-            cursor: pointer;
             transition: all 0.3s ease;
+            text-align: left;
         }
 
-        .story-item:hover {
-            border-color: var(--primary-color);
-            background-color: rgba(156, 39, 176, 0.2);
-            transform: scale(1.02);
+        .story-item h4 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
         }
 
-        .story-item.selected {
-            border-color: var(--accent-color);
-            background-color: rgba(233, 30, 99, 0.3);
+        .story-text {
+            font-style: italic;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+            line-height: 1.4;
+        }
+
+        .player-select {
+            margin-top: 15px;
+        }
+
+        .player-select label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .guess-select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .story-item.completed {
+            border-color: var(--success-color);
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        .story-item.own-story {
+            border-color: var(--warning-color);
+            background-color: rgba(255, 152, 0, 0.1);
+            opacity: 0.6;
+        }
+
+        .story-item.own-story .player-select {
+            display: none;
+        }
+
+        .story-item.own-story::after {
+            content: "🚫 This is your story - you can't guess on it!";
+            display: block;
+            color: var(--warning-color);
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
         }
 
         .results-section {
@@ -254,20 +315,25 @@
             50% { transform: translateY(-10px) rotate(5deg); }
         }
 
-        .truth-meter {
-            width: 100%;
-            height: 20px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
+        .status-message {
+            color: var(--accent-color);
+            margin: 15px 0;
+            font-weight: bold;
         }
 
-        .truth-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        .error-message {
+            color: var(--warning-color);
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        .progress-indicator {
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
-            transition: width 0.5s ease;
+            padding: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 14px;
         }
 
         @media (max-width: 768px) {
@@ -295,7 +361,7 @@
         </header>
         
         <!-- Landing Page -->
-        <section class="main-section landing" id="landing-page">
+        <section class="main-section landing active" id="landing-page">
             <div class="card">
                 <div class="detective-icon">🕵️‍♂️</div>
                 <h2>Welcome to Truth Tales</h2>
@@ -314,6 +380,7 @@
                 <input type="text" id="player-name-input" placeholder="Your detective name">
                 <button class="btn" id="join-game-btn">Join Investigation</button>
                 <button class="btn btn-secondary" id="back-btn">Back</button>
+                <div id="join-error" class="error-message" style="display: none;"></div>
             </div>
         </section>
         
@@ -324,6 +391,7 @@
                 <p>Detectives joined: <span id="player-count">0</span>/8</p>
                 <div class="player-list" id="player-list"></div>
                 <button class="btn" id="start-game-btn">Start Investigation</button>
+                <div id="host-status" class="status-message"></div>
             </div>
         </section>
         
@@ -332,7 +400,7 @@
             <div class="card">
                 <h2>Welcome, Detective <span id="player-name-display">Player</span>!</h2>
                 <p>Waiting for the investigation to begin...</p>
-                <div id="game-status"></div>
+                <div id="game-status" class="status-message"></div>
             </div>
         </section>
         
@@ -351,16 +419,19 @@
                     <p>Be honest, be funny, and remember - everyone will try to guess it's yours!</p>
                     <textarea id="story-input" placeholder="Write your embarrassing true story here... Remember, it has to be TRUE!"></textarea>
                     <button class="btn" id="submit-story-btn">Submit My Shame</button>
-                    <div id="submission-status"></div>
+                    <div id="submission-status" class="status-message"></div>
                 </div>
                 
                 <!-- Guessing Phase -->
                 <div id="guessing-section" style="display: none;">
                     <h3>Detective Time!</h3>
                     <p>Read each story and guess who wrote it. You get points for correct guesses!</p>
+                    <div class="progress-indicator" id="guess-progress">
+                        Make your guesses: <span id="guesses-made">0</span> of <span id="total-stories">0</span> complete
+                    </div>
                     <div id="stories-to-guess"></div>
-                    <div id="player-options"></div>
-                    <button class="btn" id="submit-guesses-btn" style="display: none;">Submit All Guesses</button>
+                    <button class="btn" id="submit-guesses-btn">Complete All Guesses First</button>
+                    <div id="guessing-status" class="status-message"></div>
                 </div>
                 
                 <!-- Results Phase -->
@@ -389,6 +460,7 @@
         let gameState = {
             roomCode: '',
             playerName: '',
+            playerId: '',
             isHost: false,
             players: [],
             currentRound: 0,
@@ -406,38 +478,44 @@
         const playerScreen = document.getElementById('player-screen');
         const gameScreen = document.getElementById('game-screen');
 
-        // Navigation functions
+        // Navigation functions with improved visibility handling
         function showLandingPage() {
+            console.log('Showing landing page');
             hideAllSections();
-            landingPage.style.display = 'flex';
+            landingPage.classList.add('active');
         }
 
         function showRoomJoinPage() {
+            console.log('Showing room join page');
             hideAllSections();
-            roomJoinPage.style.display = 'flex';
+            roomJoinPage.classList.add('active');
         }
 
         function showHostScreen() {
+            console.log('Showing host screen');
             hideAllSections();
-            hostScreen.style.display = 'flex';
+            hostScreen.classList.add('active');
         }
 
         function showPlayerScreen() {
+            console.log('Showing player screen');
             hideAllSections();
-            playerScreen.style.display = 'flex';
+            playerScreen.classList.add('active');
         }
 
         function showGameScreen() {
+            console.log('Showing game screen');
             hideAllSections();
-            gameScreen.style.display = 'flex';
+            gameScreen.classList.add('active');
         }
 
         function hideAllSections() {
-            landingPage.style.display = 'none';
-            roomJoinPage.style.display = 'none';
-            hostScreen.style.display = 'none';
-            playerScreen.style.display = 'none';
-            gameScreen.style.display = 'none';
+            const sections = [landingPage, roomJoinPage, hostScreen, playerScreen, gameScreen];
+            sections.forEach(section => {
+                if (section) {
+                    section.classList.remove('active');
+                }
+            });
         }
 
         // Update player list
@@ -464,6 +542,90 @@
             }
         }
 
+        // Display error messages
+        function showError(message, elementId = 'join-error') {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                }, 5000);
+            }
+            console.error('Game error:', message);
+        }
+
+        // CRITICAL FIX: Get current player ID from socket connection
+        function getCurrentPlayerId() {
+            // The socket.id is the unique identifier for this client
+            console.log('🆔 Getting current player ID:', socket.id);
+            return socket.id;
+        }
+
+        // SIMPLIFIED: Since we now only show other players' stories, no need for complex own-story detection
+        function updateGuessProgress() {
+            const selects = document.querySelectorAll('.guess-select');
+            
+            let totalStories = selects.length; // All displayed stories are valid for guessing
+            let completedGuesses = 0;
+            
+            console.log('Updating guess progress. Total stories to guess:', totalStories);
+            
+            selects.forEach(select => {
+                if (select.value !== '') {
+                    completedGuesses++;
+                    select.closest('.story-item').classList.add('completed');
+                } else {
+                    select.closest('.story-item').classList.remove('completed');
+                }
+            });
+            
+            console.log(`Completed guesses: ${completedGuesses}/${totalStories}`);
+            
+            // Update progress indicator
+            const guessesMadeSpan = document.getElementById('guesses-made');
+            const totalStoriesSpan = document.getElementById('total-stories');
+            
+            if (guessesMadeSpan) guessesMadeSpan.textContent = completedGuesses;
+            if (totalStoriesSpan) totalStoriesSpan.textContent = totalStories;
+            
+            const submitBtn = document.getElementById('submit-guesses-btn');
+            const statusDiv = document.getElementById('guessing-status');
+            
+            // Always show submit button, but only enable when ready
+            submitBtn.style.display = 'block';
+            
+            if (completedGuesses === totalStories && totalStories > 0) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit All Guesses';
+                
+                // Prepare guesses object
+                gameState.currentGuesses = {};
+                selects.forEach(select => {
+                    if (select.value !== '') {
+                        const storyId = parseInt(select.dataset.storyId);
+                        const guessedAuthorId = select.value;
+                        gameState.currentGuesses[storyId] = guessedAuthorId;
+                    }
+                });
+                
+                if (statusDiv) {
+                    statusDiv.textContent = '✅ All guesses ready! Click submit when you\'re sure.';
+                    statusDiv.style.color = 'var(--success-color)';
+                }
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Complete All Guesses First';
+                if (statusDiv) {
+                    const remaining = totalStories - completedGuesses;
+                    statusDiv.textContent = `🤔 Please make ${remaining} more guess(es).`;
+                    statusDiv.style.color = 'var(--accent-color)';
+                }
+            }
+            
+            console.log(`Guess progress: ${completedGuesses}/${totalStories} guesses made`);
+        }
+
         // Event listeners
         document.getElementById('create-room-btn').addEventListener('click', () => {
             const playerName = prompt('Enter your detective name:');
@@ -473,7 +635,12 @@
             }
             
             gameState.playerName = playerName.trim();
-            socket.emit('createRoom', { playerName: gameState.playerName });
+            console.log('Creating room with name:', gameState.playerName);
+            
+            socket.emit('createRoom', { 
+                playerName: gameState.playerName,
+                gameType: 'truth_tales'
+            });
         });
 
         document.getElementById('join-room-btn').addEventListener('click', () => {
@@ -485,16 +652,18 @@
             const playerName = document.getElementById('player-name-input').value.trim();
             
             if (roomCode.length !== 4) {
-                alert('Room code must be 4 letters');
+                showError('Room code must be 4 letters');
                 return;
             }
             
             if (!playerName || playerName.trim().length < 2) {
-                alert('Please enter a valid detective name');
+                showError('Please enter a valid detective name');
                 return;
             }
             
             gameState.playerName = playerName.trim();
+            console.log('Joining room:', roomCode, 'with name:', gameState.playerName);
+            
             socket.emit('joinRoom', { roomCode, playerName: gameState.playerName });
         });
 
@@ -508,6 +677,7 @@
                 return;
             }
             
+            console.log('Starting game in room:', gameState.roomCode);
             socket.emit('startGame', { roomCode: gameState.roomCode });
         });
 
@@ -517,6 +687,8 @@
                 alert('Please write a longer story (at least 10 characters)');
                 return;
             }
+            
+            console.log('Submitting story:', story.substring(0, 50) + '...');
             
             socket.emit('submitStory', {
                 roomCode: gameState.roomCode,
@@ -530,11 +702,62 @@
             document.getElementById('submission-status').textContent = 'Your embarrassing truth has been recorded! 📝';
         });
 
+        // CRITICAL FIX: Proper event listener for submit guesses button
+        document.getElementById('submit-guesses-btn').addEventListener('click', () => {
+            // Check if button is disabled
+            if (document.getElementById('submit-guesses-btn').disabled) {
+                alert('Please complete all your guesses first!');
+                return;
+            }
+            
+            console.log('Submitting guesses:', gameState.currentGuesses);
+            
+            // Validate we have all required guesses
+            const selects = document.querySelectorAll('.guess-select:not(:disabled)');
+            const totalValid = selects.length;
+            const actualGuesses = Object.keys(gameState.currentGuesses).length;
+            
+            if (actualGuesses !== totalValid) {
+                alert(`Please complete all guesses! You have ${actualGuesses} out of ${totalValid}.`);
+                return;
+            }
+            
+            // Submit all guesses individually
+            Object.entries(gameState.currentGuesses).forEach(([storyId, guessedAuthorId]) => {
+                console.log(`Submitting guess: Story ${storyId} -> Player ${guessedAuthorId}`);
+                socket.emit('submitGuess', {
+                    roomCode: gameState.roomCode,
+                    storyId: parseInt(storyId),
+                    guessedAuthorId: guessedAuthorId
+                });
+            });
+            
+            document.getElementById('submit-guesses-btn').disabled = true;
+            document.getElementById('submit-guesses-btn').textContent = 'Guesses Submitted!';
+            
+            const statusDiv = document.getElementById('guessing-status');
+            if (statusDiv) {
+                statusDiv.textContent = '🎯 All guesses submitted! Waiting for results...';
+            }
+        });
+
         // Socket event listeners
+        socket.on('connect', () => {
+            console.log('Connected to Truth Tales server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
         socket.on('roomCreated', ({ roomCode, isHost, players }) => {
+            console.log('Room created:', roomCode);
             gameState.roomCode = roomCode;
             gameState.isHost = isHost;
             gameState.players = players;
+            
+            // Set player ID based on socket connection
+            gameState.playerId = getCurrentPlayerId();
             
             document.getElementById('room-code-display').textContent = roomCode;
             document.getElementById('player-name-display').textContent = gameState.playerName;
@@ -543,9 +766,13 @@
         });
 
         socket.on('roomJoined', ({ roomCode, isHost, players }) => {
+            console.log('Room joined:', roomCode);
             gameState.roomCode = roomCode;
             gameState.isHost = isHost;
             gameState.players = players;
+            
+            // Set player ID based on socket connection
+            gameState.playerId = getCurrentPlayerId();
             
             document.getElementById('player-name-display').textContent = gameState.playerName;
             updatePlayerList();
@@ -553,16 +780,19 @@
         });
 
         socket.on('playerJoined', ({ players }) => {
+            console.log('Player joined, updating list');
             gameState.players = players;
             updatePlayerList();
         });
 
         socket.on('playerLeft', ({ playerName, players }) => {
+            console.log('Player left:', playerName);
             gameState.players = players;
             updatePlayerList();
         });
 
         socket.on('gameStarted', ({ message, topic, phase }) => {
+            console.log('Game started!', topic);
             gameState.phase = phase;
             gameState.currentTopic = topic;
             gameState.currentRound = 1;
@@ -576,10 +806,15 @@
         });
 
         socket.on('storySubmitted', () => {
-            console.log('Story submitted successfully!');
+            console.log('Story submission confirmed');
         });
 
         socket.on('guessingPhase', ({ stories, players }) => {
+            console.log('🔍 Guessing phase started');
+            console.log('📝 Stories received (should only be other players):', stories);
+            console.log('👥 Players available for guessing (should exclude self):', players);
+            
+            // Update game state - server already filtered out own story
             gameState.stories = stories;
             gameState.phase = 'guessing';
             
@@ -594,15 +829,17 @@
             const storiesContainer = document.getElementById('stories-to-guess');
             storiesContainer.innerHTML = '';
             
+            // Display all received stories (server already filtered out own story)
             stories.forEach((story, index) => {
+                console.log(`📋 Creating UI for Story #${index + 1}: "${story.text.substring(0, 30)}..."`);
                 const storyDiv = document.createElement('div');
                 storyDiv.className = 'story-item';
                 storyDiv.innerHTML = `
                     <h4>Story #${index + 1}</h4>
-                    <p class="result-story">"${story.text}"</p>
+                    <div class="story-text">"${story.text}"</div>
                     <div class="player-select">
                         <label>Who wrote this?</label>
-                        <select class="guess-select" data-story-id="${story.id}">
+                        <select class="guess-select" data-story-id="${story.id}" data-author-id="${story.authorId}">
                             <option value="">Select detective...</option>
                             ${players.map(player => `<option value="${player.id}">${player.name}</option>`).join('')}
                         </select>
@@ -611,44 +848,20 @@
                 storiesContainer.appendChild(storyDiv);
             });
             
-            // Show submit button when all guesses are made
+            console.log(`🎮 Created ${stories.length} story UI elements`);
+            
+            // Add event listeners 
             document.querySelectorAll('.guess-select').forEach(select => {
-                select.addEventListener('change', checkAllGuesses);
-            });
-        });
-
-        function checkAllGuesses() {
-            const selects = document.querySelectorAll('.guess-select');
-            const allFilled = Array.from(selects).every(select => select.value !== '');
-            
-            if (allFilled) {
-                document.getElementById('submit-guesses-btn').style.display = 'block';
-                
-                // Prepare guesses
-                gameState.currentGuesses = {};
-                selects.forEach(select => {
-                    const storyId = parseInt(select.dataset.storyId);
-                    const guessedAuthorId = select.value;
-                    gameState.currentGuesses[storyId] = guessedAuthorId;
-                });
-            }
-        }
-
-        document.getElementById('submit-guesses-btn').addEventListener('click', () => {
-            // Submit all guesses
-            Object.entries(gameState.currentGuesses).forEach(([storyId, guessedAuthorId]) => {
-                socket.emit('submitGuess', {
-                    roomCode: gameState.roomCode,
-                    storyId: parseInt(storyId),
-                    guessedAuthorId: guessedAuthorId
-                });
+                select.addEventListener('change', updateGuessProgress);
             });
             
-            document.getElementById('submit-guesses-btn').disabled = true;
-            document.getElementById('submit-guesses-btn').textContent = 'Guesses Submitted!';
+            // Initialize progress
+            updateGuessProgress();
         });
 
         socket.on('roundResults', ({ results, scores }) => {
+            console.log('Round results received');
+            
             // Hide guessing section
             document.getElementById('guessing-section').style.display = 'none';
             
@@ -690,14 +903,17 @@
         });
 
         socket.on('nextRound', ({ round, topic, phase }) => {
+            console.log('Next round:', round, topic);
             gameState.currentRound = round;
             gameState.currentTopic = topic;
             gameState.phase = phase;
             gameState.hasSubmittedStory = false;
+            gameState.currentGuesses = {}; // Reset guesses
             
             // Reset UI
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('story-writing-section').style.display = 'block';
+            document.getElementById('guessing-section').style.display = 'none';
             document.getElementById('phase-indicator').textContent = 'Story Writing Phase';
             
             // Update content
@@ -711,8 +927,12 @@
         });
 
         socket.on('gameEnded', ({ winner, finalScores }) => {
+            console.log('Game ended, winner:', winner.name);
+            
             // Hide all other sections
             document.getElementById('results-section').style.display = 'none';
+            document.getElementById('guessing-section').style.display = 'none';
+            document.getElementById('story-writing-section').style.display = 'none';
             
             // Show final results
             document.getElementById('final-results-section').style.display = 'block';
@@ -733,10 +953,17 @@
         });
 
         socket.on('error', ({ message }) => {
-            alert(`Error: ${message}`);
+            console.error('Socket error:', message);
+            showError(message);
+        });
+
+        // Debug logging
+        socket.onAny((event, ...args) => {
+            console.log('Socket event:', event, args);
         });
 
         // Initialize
+        console.log('Truth Tales client initialized');
         showLandingPage();
     </script>
 </body>

@@ -5,7 +5,12 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -29,7 +34,7 @@ const GAME_PHASES = {
 
 const STORY_TOPICS = [
     "Most embarrassing date moment",
-    "Childhood disaster you caused",
+    "Childhood disaster you caused", 
     "Worst job interview fail",
     "Social media mishap you regret",
     "Epic cooking disaster",
@@ -37,7 +42,22 @@ const STORY_TOPICS = [
     "Travel nightmare story",
     "Fashion choice you regret",
     "Technology fail moment",
-    "Awkward crush confession"
+    "Awkward crush confession",
+    "Time you got caught lying",
+    "Worst haircut experience",
+    "Embarrassing medical appointment",
+    "Public transportation disaster",
+    "Failed attempt to be cool",
+    "Embarrassing autocorrect fail",
+    "Time you walked into the wrong place",
+    "Worst dance move attempt",
+    "Embarrassing food incident",
+    "Time you forgot someone's name",
+    "Epic wardrobe malfunction",
+    "Worst first impression you made",
+    "Time you fell in public",
+    "Embarrassing thing your parents did",
+    "Most awkward small talk moment"
 ];
 
 // Helper functions
@@ -60,7 +80,7 @@ function createTruthTalesRoom() {
         roomCode = generateRoomCode();
     } while (truthTalesRooms.has(roomCode));
 
-    truthTalesRooms.set(roomCode, {
+    const room = {
         players: [],
         host: null,
         gameStarted: false,
@@ -69,181 +89,291 @@ function createTruthTalesRoom() {
         currentTopic: null,
         stories: [], // {id, text, authorId, guesses: {playerId: guessedAuthorId}}
         scores: {}, // playerId: score
-        roundResults: []
-    });
+        roundResults: [],
+        createdAt: new Date()
+    };
 
+    truthTalesRooms.set(roomCode, room);
+    console.log(`Truth Tales room created: ${roomCode}`);
     return roomCode;
 }
+
+function cleanupOldRooms() {
+    const now = new Date();
+    const CLEANUP_TIME = 2 * 60 * 60 * 1000; // 2 hours
+
+    for (const [roomCode, room] of truthTalesRooms.entries()) {
+        if (now - room.createdAt > CLEANUP_TIME) {
+            console.log(`Cleaning up old room: ${roomCode}`);
+            truthTalesRooms.delete(roomCode);
+        }
+    }
+}
+
+// Clean up old rooms every hour
+setInterval(cleanupOldRooms, 60 * 60 * 1000);
 
 // Socket.io event handling
 io.on('connection', (socket) => {
     console.log('Truth Tales: New client connected:', socket.id);
 
     // Create a new game room
-    socket.on('createRoom', ({ playerName }) => {
-        const roomCode = createTruthTalesRoom();
-        const gameRoom = truthTalesRooms.get(roomCode);
-        
-        gameRoom.host = socket.id;
-        gameRoom.players.push({
-            id: socket.id,
-            name: playerName,
-            isHost: true,
-            score: 0
-        });
-        
-        socket.join(roomCode);
-        
-        socket.emit('roomCreated', { 
-            roomCode, 
-            isHost: true,
-            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-        });
-        
-        console.log(`Truth Tales room created: ${roomCode} by ${playerName}`);
+    socket.on('createRoom', ({ playerName, gameType }) => {
+        try {
+            if (!playerName || playerName.trim().length < 2) {
+                socket.emit('error', { message: 'Invalid player name' });
+                return;
+            }
+
+            const roomCode = createTruthTalesRoom();
+            const gameRoom = truthTalesRooms.get(roomCode);
+            
+            gameRoom.host = socket.id;
+            gameRoom.players.push({
+                id: socket.id,
+                name: playerName.trim(),
+                isHost: true,
+                score: 0
+            });
+            
+            socket.join(roomCode);
+            
+            socket.emit('roomCreated', { 
+                roomCode, 
+                isHost: true,
+                gameType: 'truth_tales',
+                players: gameRoom.players.map(p => ({ 
+                    name: p.name, 
+                    score: p.score, 
+                    isHost: p.isHost 
+                }))
+            });
+            
+            console.log(`Truth Tales room ${roomCode} created by ${playerName}`);
+        } catch (error) {
+            console.error('Error creating room:', error);
+            socket.emit('error', { message: 'Failed to create room' });
+        }
     });
 
     // Join an existing game room
     socket.on('joinRoom', ({ roomCode, playerName }) => {
-        roomCode = roomCode.toUpperCase();
-        
-        if (!truthTalesRooms.has(roomCode)) {
-            socket.emit('error', { message: 'Room not found' });
-            return;
+        try {
+            roomCode = roomCode.toUpperCase().trim();
+            
+            if (!roomCode || roomCode.length !== 4) {
+                socket.emit('error', { message: 'Invalid room code' });
+                return;
+            }
+
+            if (!playerName || playerName.trim().length < 2) {
+                socket.emit('error', { message: 'Invalid player name' });
+                return;
+            }
+            
+            if (!truthTalesRooms.has(roomCode)) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+            
+            const gameRoom = truthTalesRooms.get(roomCode);
+            
+            if (gameRoom.gameStarted) {
+                socket.emit('error', { message: 'Game already in progress' });
+                return;
+            }
+            
+            if (gameRoom.players.length >= 8) {
+                socket.emit('error', { message: 'Room is full (max 8 players)' });
+                return;
+            }
+            
+            if (gameRoom.players.some(p => p.name.toLowerCase() === playerName.trim().toLowerCase())) {
+                socket.emit('error', { message: 'Name already taken in this room' });
+                return;
+            }
+            
+            gameRoom.players.push({
+                id: socket.id,
+                name: playerName.trim(),
+                isHost: false,
+                score: 0
+            });
+            
+            socket.join(roomCode);
+            
+            socket.emit('roomJoined', { 
+                roomCode,
+                isHost: false,
+                gameType: 'truth_tales',
+                players: gameRoom.players.map(p => ({ 
+                    name: p.name, 
+                    score: p.score, 
+                    isHost: p.isHost 
+                }))
+            });
+            
+            // Notify other players
+            socket.to(roomCode).emit('playerJoined', { 
+                playerName: playerName.trim(),
+                players: gameRoom.players.map(p => ({ 
+                    name: p.name, 
+                    score: p.score, 
+                    isHost: p.isHost 
+                }))
+            });
+            
+            console.log(`Player ${playerName} joined Truth Tales room ${roomCode}`);
+        } catch (error) {
+            console.error('Error joining room:', error);
+            socket.emit('error', { message: 'Failed to join room' });
         }
-        
-        const gameRoom = truthTalesRooms.get(roomCode);
-        
-        if (gameRoom.gameStarted) {
-            socket.emit('error', { message: 'Game already in progress' });
-            return;
-        }
-        
-        if (gameRoom.players.length >= 8) {
-            socket.emit('error', { message: 'Room is full (max 8 players)' });
-            return;
-        }
-        
-        if (gameRoom.players.some(p => p.name === playerName)) {
-            socket.emit('error', { message: 'Name already taken in this room' });
-            return;
-        }
-        
-        gameRoom.players.push({
-            id: socket.id,
-            name: playerName,
-            isHost: false,
-            score: 0
-        });
-        
-        socket.join(roomCode);
-        
-        socket.emit('roomJoined', { 
-            roomCode,
-            isHost: false,
-            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-        });
-        
-        io.to(roomCode).emit('playerJoined', { 
-            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-        });
-        
-        console.log(`Truth Tales: Player ${playerName} joined room ${roomCode}`);
     });
 
     // Start the game
     socket.on('startGame', ({ roomCode }) => {
-        const gameRoom = truthTalesRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.host !== socket.id) {
-            socket.emit('error', { message: 'Only the host can start the game' });
-            return;
+        try {
+            const gameRoom = truthTalesRooms.get(roomCode);
+            
+            if (!gameRoom) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+
+            if (gameRoom.host !== socket.id) {
+                socket.emit('error', { message: 'Only the host can start the game' });
+                return;
+            }
+            
+            if (gameRoom.players.length < 3) {
+                socket.emit('error', { message: 'Need at least 3 players to start' });
+                return;
+            }
+            
+            if (gameRoom.gameStarted) {
+                socket.emit('error', { message: 'Game already started' });
+                return;
+            }
+            
+            // Initialize game state
+            gameRoom.gameStarted = true;
+            gameRoom.currentRound = 1;
+            gameRoom.phase = GAME_PHASES.STORY_WRITING;
+            gameRoom.currentTopic = getRandomTopic();
+            gameRoom.stories = [];
+            
+            // Initialize scores
+            gameRoom.players.forEach(player => {
+                gameRoom.scores[player.id] = 0;
+            });
+            
+            io.to(roomCode).emit('gameStarted', {
+                message: `Truth Tales begins! Round 1 of 3 - Share your embarrassing stories!`,
+                topic: gameRoom.currentTopic,
+                phase: GAME_PHASES.STORY_WRITING
+            });
+            
+            console.log(`Truth Tales game started in room ${roomCode} with ${gameRoom.players.length} players`);
+        } catch (error) {
+            console.error('Error starting game:', error);
+            socket.emit('error', { message: 'Failed to start game' });
         }
-        
-        if (gameRoom.players.length < 3) {
-            socket.emit('error', { message: 'Need at least 3 players to start' });
-            return;
-        }
-        
-        gameRoom.gameStarted = true;
-        gameRoom.currentRound = 1;
-        gameRoom.phase = GAME_PHASES.STORY_WRITING;
-        gameRoom.currentTopic = getRandomTopic();
-        
-        // Initialize scores
-        gameRoom.players.forEach(player => {
-            gameRoom.scores[player.id] = 0;
-        });
-        
-        io.to(roomCode).emit('gameStarted', {
-            message: `Truth Tales begins! Round 1 of 3`,
-            topic: gameRoom.currentTopic,
-            phase: GAME_PHASES.STORY_WRITING
-        });
-        
-        console.log(`Truth Tales game started in room ${roomCode}`);
     });
 
     // Handle story submission
     socket.on('submitStory', ({ roomCode, story }) => {
-        const gameRoom = truthTalesRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.phase !== GAME_PHASES.STORY_WRITING) {
-            socket.emit('error', { message: 'Cannot submit story at this time' });
-            return;
-        }
-        
-        // Add story to collection
-        gameRoom.stories.push({
-            id: gameRoom.stories.length,
-            text: story.trim(),
-            authorId: socket.id,
-            guesses: {}
-        });
-        
-        socket.emit('storySubmitted');
-        
-        // Check if all players have submitted
-        if (gameRoom.stories.length >= gameRoom.players.length) {
-            // Move to guessing phase
-            gameRoom.phase = GAME_PHASES.STORY_GUESSING;
+        try {
+            const gameRoom = truthTalesRooms.get(roomCode);
             
-            // Shuffle stories for guessing
-            const shuffledStories = gameRoom.stories
-                .map(story => ({ id: story.id, text: story.text }))
-                .sort(() => Math.random() - 0.5);
+            if (!gameRoom) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+
+            if (gameRoom.phase !== GAME_PHASES.STORY_WRITING) {
+                socket.emit('error', { message: 'Cannot submit story at this time' });
+                return;
+            }
+
+            if (!story || story.trim().length < 10) {
+                socket.emit('error', { message: 'Story must be at least 10 characters long' });
+                return;
+            }
+
+            // Check if player already submitted
+            if (gameRoom.stories.some(s => s.authorId === socket.id)) {
+                socket.emit('error', { message: 'You have already submitted a story' });
+                return;
+            }
             
-            io.to(roomCode).emit('guessingPhase', {
-                stories: shuffledStories,
-                players: gameRoom.players.map(p => ({ id: p.id, name: p.name }))
+            // Add story to collection
+            gameRoom.stories.push({
+                id: gameRoom.stories.length,
+                text: story.trim(),
+                authorId: socket.id,
+                guesses: {}
             });
+            
+            socket.emit('storySubmitted');
+            
+            console.log(`Story submitted in room ${roomCode}: ${gameRoom.stories.length}/${gameRoom.players.length}`);
+            
+            // Check if all players have submitted
+            if (gameRoom.stories.length >= gameRoom.players.length) {
+                startGuessingPhase(roomCode);
+            }
+        } catch (error) {
+            console.error('Error submitting story:', error);
+            socket.emit('error', { message: 'Failed to submit story' });
         }
     });
 
-    // Handle guesses
+    // FIXED: Handle guesses with improved validation
     socket.on('submitGuess', ({ roomCode, storyId, guessedAuthorId }) => {
-        const gameRoom = truthTalesRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.phase !== GAME_PHASES.STORY_GUESSING) {
-            socket.emit('error', { message: 'Cannot submit guess at this time' });
-            return;
-        }
-        
-        const story = gameRoom.stories.find(s => s.id === storyId);
-        if (story) {
+        try {
+            const gameRoom = truthTalesRooms.get(roomCode);
+            
+            if (!gameRoom) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+
+            if (gameRoom.phase !== GAME_PHASES.STORY_GUESSING) {
+                socket.emit('error', { message: 'Cannot submit guess at this time' });
+                return;
+            }
+            
+            const story = gameRoom.stories.find(s => s.id === storyId);
+            if (!story) {
+                socket.emit('error', { message: 'Story not found' });
+                return;
+            }
+
+            // CRITICAL FIX: Don't allow guessing your own story
+            if (story.authorId === socket.id) {
+                console.log(`Player ${socket.id} tried to guess their own story ${storyId} - blocking`);
+                socket.emit('error', { message: 'Cannot guess your own story' });
+                return;
+            }
+
+            // Validate guessed author exists
+            if (!gameRoom.players.some(p => p.id === guessedAuthorId)) {
+                socket.emit('error', { message: 'Invalid player selection' });
+                return;
+            }
+
+            // Store the guess
             story.guesses[socket.id] = guessedAuthorId;
-        }
-        
-        socket.emit('guessSubmitted');
-        
-        // Check if all players have guessed for all stories
-        const totalGuessesNeeded = gameRoom.stories.length * gameRoom.players.length;
-        const totalGuessesReceived = gameRoom.stories.reduce((total, story) => 
-            total + Object.keys(story.guesses).length, 0);
-        
-        if (totalGuessesReceived >= totalGuessesNeeded) {
-            // Calculate scores and show results
-            calculateRoundResults(roomCode);
+            socket.emit('guessSubmitted');
+            
+            console.log(`Guess submitted in room ${roomCode}: Player ${socket.id} guessed story ${storyId} was written by ${guessedAuthorId}`);
+            
+            // IMPROVED: Check if all valid guesses are submitted
+            checkAllGuessesSubmitted(roomCode);
+            
+        } catch (error) {
+            console.error('Error submitting guess:', error);
+            socket.emit('error', { message: 'Failed to submit guess' });
         }
     });
 
@@ -258,124 +388,281 @@ io.on('connection', (socket) => {
                 const player = gameRoom.players[playerIndex];
                 gameRoom.players.splice(playerIndex, 1);
                 
+                // Handle host reassignment
                 if (gameRoom.host === socket.id && gameRoom.players.length > 0) {
                     gameRoom.host = gameRoom.players[0].id;
                     gameRoom.players[0].isHost = true;
+                    
+                    io.to(roomCode).emit('hostChanged', {
+                        newHost: gameRoom.players[0].name,
+                        players: gameRoom.players.map(p => ({ 
+                            name: p.name, 
+                            score: p.score, 
+                            isHost: p.isHost 
+                        }))
+                    });
                 }
                 
                 if (gameRoom.players.length === 0) {
+                    console.log(`Deleting empty room: ${roomCode}`);
                     truthTalesRooms.delete(roomCode);
                 } else {
                     io.to(roomCode).emit('playerLeft', { 
                         playerName: player.name,
-                        players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
+                        players: gameRoom.players.map(p => ({ 
+                            name: p.name, 
+                            score: p.score, 
+                            isHost: p.isHost 
+                        }))
                     });
                 }
+                
+                console.log(`Player ${player.name} left Truth Tales room ${roomCode}`);
+                break;
             }
         }
     });
 });
 
-function calculateRoundResults(roomCode) {
-    const gameRoom = truthTalesRooms.get(roomCode);
-    
-    // Calculate scores for this round
-    const roundResults = [];
-    
-    gameRoom.stories.forEach(story => {
-        const author = gameRoom.players.find(p => p.id === story.authorId);
-        const correctGuesses = Object.values(story.guesses).filter(guess => guess === story.authorId).length;
-        const totalGuesses = Object.keys(story.guesses).length;
+function startGuessingPhase(roomCode) {
+    try {
+        const gameRoom = truthTalesRooms.get(roomCode);
+        if (!gameRoom) return;
+
+        // Move to guessing phase
+        gameRoom.phase = GAME_PHASES.STORY_GUESSING;
         
-        // Author gets points for each wrong guess
-        gameRoom.scores[story.authorId] += (totalGuesses - correctGuesses);
+        console.log(`🎯 Starting guessing phase for room ${roomCode}`);
+        console.log(`📝 Total stories:`, gameRoom.stories.length);
         
-        // Players get points for correct guesses
-        Object.entries(story.guesses).forEach(([guesserId, guessedAuthorId]) => {
-            if (guessedAuthorId === story.authorId) {
-                gameRoom.scores[guesserId] += 2;
+        // Send personalized story lists to each player (excluding their own story)
+        gameRoom.players.forEach(player => {
+            console.log(`👤 Preparing stories for player ${player.name} (${player.id})`);
+            
+            // Filter out this player's own story
+            const otherPlayersStories = gameRoom.stories
+                .filter(story => story.authorId !== player.id)
+                .map(story => ({ 
+                    id: story.id, 
+                    text: story.text // 🔒 authorId omitted
+                }))
+                .sort(() => Math.random() - 0.5); // Shuffle
+            
+            // Provide all players (including self) as dropdown options
+            const allPlayers = gameRoom.players.map(p => ({ 
+                id: p.id, 
+                name: p.name 
+            }));
+            
+            console.log(`📤 Sending to ${player.name}: ${otherPlayersStories.length} stories to guess`);
+            
+            io.to(player.id).emit('guessingPhase', {
+                stories: otherPlayersStories,
+                players: allPlayers
+            });
+        });
+
+        console.log(`✅ Guessing phase started in room ${roomCode}`);
+    } catch (error) {
+        console.error('❌ Error starting guessing phase:', error);
+    }
+}
+
+
+// CRITICAL FIX: Improved guess checking logic
+function checkAllGuessesSubmitted(roomCode) {
+    try {
+        const gameRoom = truthTalesRooms.get(roomCode);
+        if (!gameRoom) return;
+
+        // Calculate how many guesses each player should make
+        // Each player should guess on all stories EXCEPT their own
+        let expectedTotalGuesses = 0;
+        let actualTotalGuesses = 0;
+        
+        for (const player of gameRoom.players) {
+            for (const story of gameRoom.stories) {
+                // Players can only guess stories they didn't write
+                if (story.authorId !== player.id) {
+                    expectedTotalGuesses++;
+                    
+                    // Check if this player has guessed this story
+                    if (story.guesses[player.id]) {
+                        actualTotalGuesses++;
+                    }
+                }
             }
+        }
+        
+        console.log(`🔍 Room ${roomCode} guess progress: ${actualTotalGuesses}/${expectedTotalGuesses} valid guesses submitted`);
+        
+        // Detailed logging for debugging
+        gameRoom.players.forEach(player => {
+            const playerGuesses = [];
+            gameRoom.stories.forEach(story => {
+                if (story.authorId !== player.id) {
+                    const hasGuessed = story.guesses[player.id] ? '✅' : '❌';
+                    playerGuesses.push(`Story ${story.id}: ${hasGuessed}`);
+                }
+            });
+            console.log(`Player ${player.name} (${player.id}): ${playerGuesses.join(', ')}`);
         });
         
-        roundResults.push({
-            story: story.text,
-            author: author.name,
-            correctGuesses,
-            totalGuesses,
-            guesses: Object.entries(story.guesses).map(([guesserId, guessedAuthorId]) => {
-                const guesser = gameRoom.players.find(p => p.id === guesserId);
-                const guessedPlayer = gameRoom.players.find(p => p.id === guessedAuthorId);
-                return {
-                    guesser: guesser.name,
-                    guessedAuthor: guessedPlayer.name,
-                    correct: guessedAuthorId === story.authorId
-                };
-            })
+        // If everyone has submitted all their valid guesses, calculate results
+        if (actualTotalGuesses >= expectedTotalGuesses && expectedTotalGuesses > 0) {
+            console.log(`🎉 ALL VALID GUESSES SUBMITTED in room ${roomCode}! Calculating results...`);
+            calculateRoundResults(roomCode);
+        } else {
+            console.log(`⏳ Still waiting for ${expectedTotalGuesses - actualTotalGuesses} more guesses in room ${roomCode}`);
+        }
+    } catch (error) {
+        console.error('Error checking guesses:', error);
+    }
+}
+
+function calculateRoundResults(roomCode) {
+    try {
+        const gameRoom = truthTalesRooms.get(roomCode);
+        if (!gameRoom) return;
+        
+        const roundResults = [];
+        
+        gameRoom.stories.forEach(story => {
+            const author = gameRoom.players.find(p => p.id === story.authorId);
+            if (!author) return;
+
+            const allGuesses = Object.entries(story.guesses);
+            const correctGuesses = allGuesses.filter(([guesserId, guessedAuthorId]) => 
+                guessedAuthorId === story.authorId
+            ).length;
+            const totalGuesses = allGuesses.length;
+            
+            // IMPROVED SCORING SYSTEM
+            // Author gets points for each wrong guess (misdirection)
+            const wrongGuesses = totalGuesses - correctGuesses;
+            gameRoom.scores[story.authorId] = (gameRoom.scores[story.authorId] || 0) + wrongGuesses;
+            
+            // Players get points for correct guesses
+            allGuesses.forEach(([guesserId, guessedAuthorId]) => {
+                if (guessedAuthorId === story.authorId) {
+                    gameRoom.scores[guesserId] = (gameRoom.scores[guesserId] || 0) + 2; // 2 points for correct guess
+                }
+            });
+            
+            // Perfect misdirection bonus (fooled everyone)
+            if (correctGuesses === 0 && totalGuesses > 0) {
+                gameRoom.scores[story.authorId] = (gameRoom.scores[story.authorId] || 0) + 3; // Bonus for fooling everyone
+            }
+            
+            roundResults.push({
+                story: story.text,
+                author: author.name,
+                correctGuesses,
+                totalGuesses,
+                guesses: allGuesses.map(([guesserId, guessedAuthorId]) => {
+                    const guesser = gameRoom.players.find(p => p.id === guesserId);
+                    const guessedPlayer = gameRoom.players.find(p => p.id === guessedAuthorId);
+                    return {
+                        guesser: guesser ? guesser.name : 'Unknown',
+                        guessedAuthor: guessedPlayer ? guessedPlayer.name : 'Unknown',
+                        correct: guessedAuthorId === story.authorId
+                    };
+                })
+            });
         });
-    });
-    
-    gameRoom.phase = GAME_PHASES.RESULTS;
-    
-    io.to(roomCode).emit('roundResults', {
-        results: roundResults,
-        scores: gameRoom.players.map(p => ({
+        
+        gameRoom.phase = GAME_PHASES.RESULTS;
+        
+        const sortedScores = gameRoom.players.map(p => ({
             name: p.name,
-            score: gameRoom.scores[p.id]
-        })).sort((a, b) => b.score - a.score)
-    });
-    
-    // Check if game is complete
-    if (gameRoom.currentRound >= 3) {
-        setTimeout(() => {
-            endTruthTalesGame(roomCode);
-        }, 10000);
-    } else {
-        // Next round
-        setTimeout(() => {
-            startNextRound(roomCode);
-        }, 10000);
+            score: gameRoom.scores[p.id] || 0
+        })).sort((a, b) => b.score - a.score);
+        
+        io.to(roomCode).emit('roundResults', {
+            results: roundResults,
+            scores: sortedScores
+        });
+        
+        console.log(`Round ${gameRoom.currentRound} results calculated for room ${roomCode}`);
+        
+        // Check if game is complete
+        if (gameRoom.currentRound >= 3) {
+            setTimeout(() => {
+                endTruthTalesGame(roomCode);
+            }, 10000); // 10 second delay before ending
+        } else {
+            setTimeout(() => {
+                startNextRound(roomCode);
+            }, 10000); // 10 second delay before next round
+        }
+    } catch (error) {
+        console.error('Error calculating results:', error);
     }
 }
 
 function startNextRound(roomCode) {
-    const gameRoom = truthTalesRooms.get(roomCode);
-    
-    gameRoom.currentRound++;
-    gameRoom.phase = GAME_PHASES.STORY_WRITING;
-    gameRoom.currentTopic = getRandomTopic();
-    gameRoom.stories = [];
-    
-    io.to(roomCode).emit('nextRound', {
-        round: gameRoom.currentRound,
-        topic: gameRoom.currentTopic,
-        phase: GAME_PHASES.STORY_WRITING
-    });
+    try {
+        const gameRoom = truthTalesRooms.get(roomCode);
+        if (!gameRoom) return;
+        
+        gameRoom.currentRound++;
+        gameRoom.phase = GAME_PHASES.STORY_WRITING;
+        gameRoom.currentTopic = getRandomTopic();
+        gameRoom.stories = []; // Clear stories for new round
+        
+        io.to(roomCode).emit('nextRound', {
+            round: gameRoom.currentRound,
+            topic: gameRoom.currentTopic,
+            phase: GAME_PHASES.STORY_WRITING
+        });
+        
+        console.log(`Round ${gameRoom.currentRound} started in room ${roomCode}`);
+    } catch (error) {
+        console.error('Error starting next round:', error);
+    }
 }
 
 function endTruthTalesGame(roomCode) {
-    const gameRoom = truthTalesRooms.get(roomCode);
-    
-    const finalScores = gameRoom.players.map(p => ({
-        name: p.name,
-        score: gameRoom.scores[p.id]
-    })).sort((a, b) => b.score - a.score);
-    
-    io.to(roomCode).emit('gameEnded', {
-        winner: finalScores[0],
-        finalScores: finalScores
-    });
-    
-    // Reset game
-    gameRoom.gameStarted = false;
-    gameRoom.currentRound = 0;
-    gameRoom.phase = GAME_PHASES.WAITING;
-    gameRoom.stories = [];
-    gameRoom.scores = {};
+    try {
+        const gameRoom = truthTalesRooms.get(roomCode);
+        if (!gameRoom) return;
+        
+        const finalScores = gameRoom.players.map(p => ({
+            name: p.name,
+            score: gameRoom.scores[p.id] || 0
+        })).sort((a, b) => b.score - a.score);
+        
+        io.to(roomCode).emit('gameEnded', {
+            winner: finalScores[0],
+            finalScores: finalScores
+        });
+        
+        // Reset game state for potential replay
+        gameRoom.gameStarted = false;
+        gameRoom.currentRound = 0;
+        gameRoom.phase = GAME_PHASES.WAITING;
+        gameRoom.stories = [];
+        gameRoom.scores = {};
+        
+        console.log(`Truth Tales game ended in room ${roomCode}. Winner: ${finalScores[0].name}`);
+    } catch (error) {
+        console.error('Error ending game:', error);
+    }
 }
 
-// Start server on different port than main game
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        activeRooms: truthTalesRooms.size,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Start server
 const PORT = process.env.TRUTH_TALES_PORT || 3002;
 server.listen(PORT, () => {
     console.log(`🕵️ Truth Tales server running on port ${PORT}`);
     console.log(`🌐 Visit: http://localhost:${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
 });

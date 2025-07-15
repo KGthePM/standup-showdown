@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 const { getRandomContent, getUniqueContentForPlayers } = require('./content');
 
 const app = express();
@@ -9,28 +10,109 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 // ========================================
-// STATIC FILE SERVING & ROUTES
+// ENHANCED STATIC FILE SERVING & ROUTES
 // ========================================
 
-// Serve static files from public directory (for Joke Factory)
-app.use('/joke-factory', express.static(path.join(__dirname, 'public')));
+// Custom static file middleware with better error handling
+function createStaticMiddleware(root, options = {}) {
+    return express.static(root, {
+        ...options,
+        // Disable range requests to prevent Range Not Satisfiable errors
+        acceptRanges: false,
+        // Set proper headers
+        setHeaders: (res, path, stat) => {
+            res.set('Cache-Control', 'public, max-age=0');
+            res.set('Accept-Ranges', 'none');
+        },
+        // Handle errors gracefully
+        fallthrough: true
+    });
+}
 
-// Serve static files for Truth Tales
-app.use('/truth-tales', express.static(path.join(__dirname, 'games/truth-tales/public')));
+// Serve static files with enhanced error handling
+app.use('/joke-factory', createStaticMiddleware(path.join(__dirname, 'public')));
+app.use('/truth-tales', createStaticMiddleware(path.join(__dirname, 'games/truth-tales/public')));
 
 // Main hub route
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    try {
+        const indexPath = path.join(__dirname, 'index.html');
+        if (fs.existsSync(indexPath)) {
+            res.sendFile(indexPath);
+        } else {
+            res.status(404).send(`
+                <h1>StandUp Showdown - Game Hub Not Found</h1>
+                <p>Main index.html file not found. Please check your file structure.</p>
+                <p><a href="/joke-factory">Try Joke Factory directly</a></p>
+                <p><a href="/truth-tales">Try Truth Tales directly</a></p>
+            `);
+        }
+    } catch (error) {
+        console.error('Error serving main route:', error);
+        res.status(500).send('Internal server error');
+    }
 });
 
 // Joke Factory route
 app.get('/joke-factory', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    try {
+        const jokeFactoryPath = path.join(__dirname, 'public', 'index.html');
+        if (fs.existsSync(jokeFactoryPath)) {
+            res.sendFile(jokeFactoryPath);
+        } else {
+            res.status(404).send(`
+                <h1>Joke Factory Not Found</h1>
+                <p>Joke Factory index.html not found at: ${jokeFactoryPath}</p>
+                <p><a href="/">Back to Hub</a></p>
+            `);
+        }
+    } catch (error) {
+        console.error('Error serving Joke Factory:', error);
+        res.status(500).send('Internal server error');
+    }
 });
 
 // Truth Tales route
 app.get('/truth-tales', (req, res) => {
-    res.sendFile(path.join(__dirname, 'games/truth-tales/public', 'index.html'));
+    try {
+        const truthTalesPath = path.join(__dirname, 'games/truth-tales/public', 'index.html');
+        if (fs.existsSync(truthTalesPath)) {
+            res.sendFile(truthTalesPath);
+        } else {
+            res.status(404).send(`
+                <h1>Truth Tales Not Found</h1>
+                <p>Truth Tales index.html not found at: ${truthTalesPath}</p>
+                <p><a href="/">Back to Hub</a></p>
+            `);
+        }
+    } catch (error) {
+        console.error('Error serving Truth Tales:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        games: ['joke-factory', 'truth-tales'],
+        activeRooms: gameRooms.size
+    });
+});
+
+// Global error handler for static files
+app.use((err, req, res, next) => {
+    if (err.code === 'ENOENT') {
+        console.warn(`File not found: ${req.url}`);
+        res.status(404).send('File not found');
+    } else if (err.status === 416 || err.message.includes('Range Not Satisfiable')) {
+        console.warn(`Range error for: ${req.url}`);
+        res.status(200).send(''); // Send empty response instead of range error
+    } else {
+        console.error('Static file error:', err);
+        res.status(500).send('Internal server error');
+    }
 });
 
 // ========================================
@@ -281,19 +363,26 @@ function startJokeFactoryRound(roomCode, roundNumber) {
     let content = [];
     let roundType = '';
 
-    switch (roundNumber) {
-        case ROUNDS.SETUP_BATTLE:
-            content = getUniqueContentForPlayers('punchlines', gameRoom.players.length);
-            roundType = 'punchlines';
-            break;
-        case ROUNDS.PUNCHLINE_CHALLENGE:
-            content = getUniqueContentForPlayers('setups', gameRoom.players.length);
-            roundType = 'setups';
-            break;
-        case ROUNDS.FULL_JOKE_CREATION:
-            content = getUniqueContentForPlayers('topics', gameRoom.players.length);
-            roundType = 'topics';
-            break;
+    try {
+        switch (roundNumber) {
+            case ROUNDS.SETUP_BATTLE:
+                content = getUniqueContentForPlayers('punchlines', gameRoom.players.length);
+                roundType = 'punchlines';
+                break;
+            case ROUNDS.PUNCHLINE_CHALLENGE:
+                content = getUniqueContentForPlayers('setups', gameRoom.players.length);
+                roundType = 'setups';
+                break;
+            case ROUNDS.FULL_JOKE_CREATION:
+                content = getUniqueContentForPlayers('topics', gameRoom.players.length);
+                roundType = 'topics';
+                break;
+        }
+    } catch (error) {
+        console.error('Error getting content for round:', error);
+        // Fallback content
+        content = Array(gameRoom.players.length).fill(`Fallback content for round ${roundNumber}`);
+        roundType = 'topics';
     }
 
     gameRoom.roundData.content = content;
@@ -310,7 +399,7 @@ function startJokeFactoryRound(roomCode, roundNumber) {
                 round: roundNumber,
                 roundName: ROUND_NAMES[roundNumber],
                 roundType: roundType,
-                content: content[index],
+                content: content[index] || `Round ${roundNumber} content`,
                 timeLimit: TIMER_DURATION
             });
         });
@@ -507,15 +596,15 @@ function calculateTruthTalesResults(roomCode) {
         
         roundResults.push({
             story: story.text,
-            author: author.name,
+            author: author ? author.name : 'Unknown',
             correctGuesses,
             totalGuesses,
             guesses: Object.entries(story.guesses).map(([guesserId, guessedAuthorId]) => {
                 const guesser = gameRoom.players.find(p => p.id === guesserId);
                 const guessedPlayer = gameRoom.players.find(p => p.id === guessedAuthorId);
                 return {
-                    guesser: guesser.name,
-                    guessedAuthor: guessedPlayer.name,
+                    guesser: guesser ? guesser.name : 'Unknown',
+                    guessedAuthor: guessedPlayer ? guessedPlayer.name : 'Unknown',
                     correct: guessedAuthorId === story.authorId
                 };
             })
@@ -528,7 +617,7 @@ function calculateTruthTalesResults(roomCode) {
         results: roundResults,
         scores: gameRoom.players.map(p => ({
             name: p.name,
-            score: gameRoom.scores[p.id]
+            score: gameRoom.scores[p.id] || 0
         })).sort((a, b) => b.score - a.score)
     });
     
@@ -565,7 +654,7 @@ function endTruthTalesGame(roomCode) {
     
     const finalScores = gameRoom.players.map(p => ({
         name: p.name,
-        score: gameRoom.scores[p.id]
+        score: gameRoom.scores[p.id] || 0
     })).sort((a, b) => b.score - a.score);
     
     io.to(roomCode).emit('gameEnded', {
@@ -582,333 +671,406 @@ function endTruthTalesGame(roomCode) {
 }
 
 // ========================================
-// UNIFIED SOCKET.IO EVENT HANDLING
+// ENHANCED SOCKET.IO EVENT HANDLING WITH ERROR HANDLING
 // ========================================
 
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
+    // Enhanced error handling for socket events
+    const handleSocketError = (eventName, error) => {
+        console.error(`Socket error in ${eventName}:`, error);
+        socket.emit('error', { message: `Server error in ${eventName}` });
+    };
+
     // Create room - now with game type specification
     socket.on('createRoom', ({ playerName, gameType }) => {
-        // If gameType not specified, try to infer from referer or default to joke factory
-        const actualGameType = gameType || GAME_TYPES.JOKE_FACTORY;
-        
-        const roomCode = createGameRoom(actualGameType);
-        const gameRoom = gameRooms.get(roomCode);
-        
-        gameRoom.host = socket.id;
-        gameRoom.players.push({
-            id: socket.id,
-            name: playerName,
-            isHost: true,
-            score: 0
-        });
-        
-        socket.join(roomCode);
-        
-        socket.emit('roomCreated', { 
-            roomCode, 
-            isHost: true,
-            gameType: actualGameType,
-            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-        });
-        
-        console.log(`${actualGameType} room created: ${roomCode} by ${playerName}`);
+        try {
+            const actualGameType = gameType || GAME_TYPES.JOKE_FACTORY;
+            
+            const roomCode = createGameRoom(actualGameType);
+            const gameRoom = gameRooms.get(roomCode);
+            
+            gameRoom.host = socket.id;
+            gameRoom.players.push({
+                id: socket.id,
+                name: playerName,
+                isHost: true,
+                score: 0
+            });
+            
+            socket.join(roomCode);
+            
+            socket.emit('roomCreated', { 
+                roomCode, 
+                isHost: true,
+                gameType: actualGameType,
+                players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
+            });
+            
+            console.log(`${actualGameType} room created: ${roomCode} by ${playerName}`);
+        } catch (error) {
+            handleSocketError('createRoom', error);
+        }
     });
 
     // Join room
     socket.on('joinRoom', ({ roomCode, playerName }) => {
-        roomCode = roomCode.toUpperCase();
-        
-        if (!gameRooms.has(roomCode)) {
-            socket.emit('error', { message: 'Room not found' });
-            return;
+        try {
+            roomCode = roomCode.toUpperCase();
+            
+            if (!gameRooms.has(roomCode)) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+            
+            const gameRoom = gameRooms.get(roomCode);
+            
+            if (gameRoom.gameStarted) {
+                socket.emit('error', { message: 'Game already in progress' });
+                return;
+            }
+            
+            const maxPlayers = gameRoom.gameType === GAME_TYPES.JOKE_FACTORY ? 6 : 8;
+            if (gameRoom.players.length >= maxPlayers) {
+                socket.emit('error', { message: `Room is full (max ${maxPlayers} players)` });
+                return;
+            }
+            
+            if (gameRoom.players.some(p => p.name === playerName)) {
+                socket.emit('error', { message: 'Name already taken in this room' });
+                return;
+            }
+            
+            gameRoom.players.push({
+                id: socket.id,
+                name: playerName,
+                isHost: false,
+                score: 0
+            });
+            
+            socket.join(roomCode);
+            
+            socket.emit('roomJoined', { 
+                roomCode,
+                isHost: false,
+                gameType: gameRoom.gameType,
+                players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
+            });
+            
+            io.to(roomCode).emit('playerJoined', { 
+                players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
+            });
+            
+            console.log(`Player ${playerName} joined ${gameRoom.gameType} room ${roomCode}`);
+        } catch (error) {
+            handleSocketError('joinRoom', error);
         }
-        
-        const gameRoom = gameRooms.get(roomCode);
-        
-        if (gameRoom.gameStarted) {
-            socket.emit('error', { message: 'Game already in progress' });
-            return;
-        }
-        
-        const maxPlayers = gameRoom.gameType === GAME_TYPES.JOKE_FACTORY ? 6 : 8;
-        if (gameRoom.players.length >= maxPlayers) {
-            socket.emit('error', { message: `Room is full (max ${maxPlayers} players)` });
-            return;
-        }
-        
-        if (gameRoom.players.some(p => p.name === playerName)) {
-            socket.emit('error', { message: 'Name already taken in this room' });
-            return;
-        }
-        
-        gameRoom.players.push({
-            id: socket.id,
-            name: playerName,
-            isHost: false,
-            score: 0
-        });
-        
-        socket.join(roomCode);
-        
-        socket.emit('roomJoined', { 
-            roomCode,
-            isHost: false,
-            gameType: gameRoom.gameType,
-            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-        });
-        
-        io.to(roomCode).emit('playerJoined', { 
-            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-        });
-        
-        console.log(`Player ${playerName} joined ${gameRoom.gameType} room ${roomCode}`);
     });
 
     // Start game - unified for both game types
     socket.on('startGame', ({ roomCode }) => {
-        const gameRoom = gameRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.host !== socket.id) {
-            socket.emit('error', { message: 'Only the host can start the game' });
-            return;
-        }
-        
-        if (gameRoom.players.length < 3) {
-            socket.emit('error', { message: 'Need at least 3 players to start' });
-            return;
-        }
-        
-        gameRoom.gameStarted = true;
-        
-        // Initialize scores
-        gameRoom.players.forEach(player => {
-            gameRoom.scores[player.id] = 0;
-        });
-        
-        if (gameRoom.gameType === GAME_TYPES.JOKE_FACTORY) {
-            // Start Joke Factory game
-            io.to(roomCode).emit('hostSpeaks', {
-                line: getRandomHostLine('gameStart'),
-                type: 'welcome'
+        try {
+            const gameRoom = gameRooms.get(roomCode);
+            
+            if (!gameRoom || gameRoom.host !== socket.id) {
+                socket.emit('error', { message: 'Only the host can start the game' });
+                return;
+            }
+            
+            if (gameRoom.players.length < 3) {
+                socket.emit('error', { message: 'Need at least 3 players to start' });
+                return;
+            }
+            
+            gameRoom.gameStarted = true;
+            
+            // Initialize scores
+            gameRoom.players.forEach(player => {
+                gameRoom.scores[player.id] = 0;
             });
             
-            setTimeout(() => {
-                io.to(roomCode).emit('gameStarting', {
-                    message: `Game starting with ${gameRoom.players.length} players! Everyone participates - even the host!`,
-                    totalPlayers: gameRoom.players.length
+            if (gameRoom.gameType === GAME_TYPES.JOKE_FACTORY) {
+                // Start Joke Factory game
+                io.to(roomCode).emit('hostSpeaks', {
+                    line: getRandomHostLine('gameStart'),
+                    type: 'welcome'
                 });
-            }, 3000);
+                
+                setTimeout(() => {
+                    io.to(roomCode).emit('gameStarting', {
+                        message: `Game starting with ${gameRoom.players.length} players! Everyone participates - even the host!`,
+                        totalPlayers: gameRoom.players.length
+                    });
+                }, 3000);
+                
+                setTimeout(() => {
+                    startJokeFactoryRound(roomCode, ROUNDS.SETUP_BATTLE);
+                }, 5000);
+                
+            } else if (gameRoom.gameType === GAME_TYPES.TRUTH_TALES) {
+                // Start Truth Tales game
+                gameRoom.currentRound = 1;
+                gameRoom.phase = TRUTH_GAME_PHASES.STORY_WRITING;
+                gameRoom.currentTopic = getRandomTopic();
+                
+                io.to(roomCode).emit('gameStarted', {
+                    message: `Truth Tales begins! Round 1 of 3`,
+                    topic: gameRoom.currentTopic,
+                    phase: TRUTH_GAME_PHASES.STORY_WRITING
+                });
+            }
             
-            setTimeout(() => {
-                startJokeFactoryRound(roomCode, ROUNDS.SETUP_BATTLE);
-            }, 5000);
-            
-        } else if (gameRoom.gameType === GAME_TYPES.TRUTH_TALES) {
-            // Start Truth Tales game
-            gameRoom.currentRound = 1;
-            gameRoom.phase = TRUTH_GAME_PHASES.STORY_WRITING;
-            gameRoom.currentTopic = getRandomTopic();
-            
-            io.to(roomCode).emit('gameStarted', {
-                message: `Truth Tales begins! Round 1 of 3`,
-                topic: gameRoom.currentTopic,
-                phase: TRUTH_GAME_PHASES.STORY_WRITING
-            });
+            console.log(`${gameRoom.gameType} game started in room ${roomCode}`);
+        } catch (error) {
+            handleSocketError('startGame', error);
         }
-        
-        console.log(`${gameRoom.gameType} game started in room ${roomCode}`);
     });
 
     // Handle submissions - route to appropriate game logic
     socket.on('submitAnswer', ({ roomCode, answer }) => {
-        const gameRoom = gameRooms.get(roomCode);
-        
-        if (!gameRoom) {
-            socket.emit('error', { message: 'Room not found' });
-            return;
-        }
-
-        if (gameRoom.gameType === GAME_TYPES.JOKE_FACTORY) {
-            if (gameRoom.roundPhase !== 'writing') {
-                socket.emit('error', { message: 'Cannot submit at this time' });
+        try {
+            const gameRoom = gameRooms.get(roomCode);
+            
+            if (!gameRoom) {
+                socket.emit('error', { message: 'Room not found' });
                 return;
             }
-            
-            gameRoom.roundData.submissions[socket.id] = answer.trim();
-            
-            const submissionCount = Object.keys(gameRoom.roundData.submissions).length;
-            const totalPlayers = gameRoom.players.length;
-            
-            socket.emit('submissionReceived');
-            
-            io.to(roomCode).emit('submissionUpdate', {
-                submitted: submissionCount,
-                total: totalPlayers
-            });
-            
-            if (submissionCount >= totalPlayers) {
-                if (gameRoom.roundData.timer) {
-                    clearTimeout(gameRoom.roundData.timer);
-                    gameRoom.roundData.timer = null;
+
+            if (gameRoom.gameType === GAME_TYPES.JOKE_FACTORY) {
+                if (gameRoom.roundPhase !== 'writing') {
+                    socket.emit('error', { message: 'Cannot submit at this time' });
+                    return;
                 }
-                startJokeFactoryVoting(roomCode);
+                
+                gameRoom.roundData.submissions[socket.id] = answer.trim();
+                
+                const submissionCount = Object.keys(gameRoom.roundData.submissions).length;
+                const totalPlayers = gameRoom.players.length;
+                
+                socket.emit('submissionReceived');
+                
+                io.to(roomCode).emit('submissionUpdate', {
+                    submitted: submissionCount,
+                    total: totalPlayers
+                });
+                
+                if (submissionCount >= totalPlayers) {
+                    if (gameRoom.roundData.timer) {
+                        clearTimeout(gameRoom.roundData.timer);
+                        gameRoom.roundData.timer = null;
+                    }
+                    startJokeFactoryVoting(roomCode);
+                }
             }
+        } catch (error) {
+            handleSocketError('submitAnswer', error);
         }
     });
 
     // Handle Truth Tales story submission
     socket.on('submitStory', ({ roomCode, story }) => {
-        const gameRoom = gameRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.gameType !== GAME_TYPES.TRUTH_TALES) {
-            socket.emit('error', { message: 'Invalid room or game type' });
-            return;
-        }
-        
-        if (gameRoom.phase !== TRUTH_GAME_PHASES.STORY_WRITING) {
-            socket.emit('error', { message: 'Cannot submit story at this time' });
-            return;
-        }
-        
-        gameRoom.stories.push({
-            id: gameRoom.stories.length,
-            text: story.trim(),
-            authorId: socket.id,
-            guesses: {}
-        });
-        
-        socket.emit('storySubmitted');
-        
-        if (gameRoom.stories.length >= gameRoom.players.length) {
-            gameRoom.phase = TRUTH_GAME_PHASES.STORY_GUESSING;
+        try {
+            const gameRoom = gameRooms.get(roomCode);
             
-            const shuffledStories = gameRoom.stories
-                .map(story => ({ id: story.id, text: story.text }))
-                .sort(() => Math.random() - 0.5);
+            if (!gameRoom || gameRoom.gameType !== GAME_TYPES.TRUTH_TALES) {
+                socket.emit('error', { message: 'Invalid room or game type' });
+                return;
+            }
             
-            io.to(roomCode).emit('guessingPhase', {
-                stories: shuffledStories,
-                players: gameRoom.players.map(p => ({ id: p.id, name: p.name }))
+            if (gameRoom.phase !== TRUTH_GAME_PHASES.STORY_WRITING) {
+                socket.emit('error', { message: 'Cannot submit story at this time' });
+                return;
+            }
+            
+            gameRoom.stories.push({
+                id: gameRoom.stories.length,
+                text: story.trim(),
+                authorId: socket.id,
+                guesses: {}
             });
+            
+            socket.emit('storySubmitted');
+            
+            if (gameRoom.stories.length >= gameRoom.players.length) {
+                gameRoom.phase = TRUTH_GAME_PHASES.STORY_GUESSING;
+                
+                const shuffledStories = gameRoom.stories
+                    .map(story => ({ id: story.id, text: story.text }))
+                    .sort(() => Math.random() - 0.5);
+                
+                io.to(roomCode).emit('guessingPhase', {
+                    stories: shuffledStories,
+                    players: gameRoom.players.map(p => ({ id: p.id, name: p.name }))
+                });
+            }
+        } catch (error) {
+            handleSocketError('submitStory', error);
         }
     });
 
     // Handle voting for Joke Factory
     socket.on('submitVote', ({ roomCode, submissionId }) => {
-        const gameRoom = gameRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.gameType !== GAME_TYPES.JOKE_FACTORY) {
-            socket.emit('error', { message: 'Invalid room or game type' });
-            return;
-        }
-        
-        if (gameRoom.roundPhase !== 'voting') {
-            socket.emit('error', { message: 'Cannot vote at this time' });
-            return;
-        }
-        
-        gameRoom.roundData.votes[socket.id] = submissionId;
-        
-        const voteCount = Object.keys(gameRoom.roundData.votes).length;
-        const totalPlayers = gameRoom.players.length;
-        
-        socket.emit('voteReceived');
-        
-        io.to(roomCode).emit('voteUpdate', {
-            voted: voteCount,
-            total: totalPlayers
-        });
-        
-        if (voteCount >= totalPlayers) {
-            if (gameRoom.roundData.timer) {
-                clearTimeout(gameRoom.roundData.timer);
-                gameRoom.roundData.timer = null;
+        try {
+            const gameRoom = gameRooms.get(roomCode);
+            
+            if (!gameRoom || gameRoom.gameType !== GAME_TYPES.JOKE_FACTORY) {
+                socket.emit('error', { message: 'Invalid room or game type' });
+                return;
             }
-            endJokeFactoryVoting(roomCode);
+            
+            if (gameRoom.roundPhase !== 'voting') {
+                socket.emit('error', { message: 'Cannot vote at this time' });
+                return;
+            }
+            
+            gameRoom.roundData.votes[socket.id] = submissionId;
+            
+            const voteCount = Object.keys(gameRoom.roundData.votes).length;
+            const totalPlayers = gameRoom.players.length;
+            
+            socket.emit('voteReceived');
+            
+            io.to(roomCode).emit('voteUpdate', {
+                voted: voteCount,
+                total: totalPlayers
+            });
+            
+            if (voteCount >= totalPlayers) {
+                if (gameRoom.roundData.timer) {
+                    clearTimeout(gameRoom.roundData.timer);
+                    gameRoom.roundData.timer = null;
+                }
+                endJokeFactoryVoting(roomCode);
+            }
+        } catch (error) {
+            handleSocketError('submitVote', error);
         }
     });
 
     // Handle guesses for Truth Tales
     socket.on('submitGuess', ({ roomCode, storyId, guessedAuthorId }) => {
-        const gameRoom = gameRooms.get(roomCode);
-        
-        if (!gameRoom || gameRoom.gameType !== GAME_TYPES.TRUTH_TALES) {
-            socket.emit('error', { message: 'Invalid room or game type' });
-            return;
-        }
-        
-        if (gameRoom.phase !== TRUTH_GAME_PHASES.STORY_GUESSING) {
-            socket.emit('error', { message: 'Cannot submit guess at this time' });
-            return;
-        }
-        
-        const story = gameRoom.stories.find(s => s.id === storyId);
-        if (story) {
-            story.guesses[socket.id] = guessedAuthorId;
-        }
-        
-        socket.emit('guessSubmitted');
-        
-        // Check if all players have guessed for all stories
-        const totalGuessesNeeded = gameRoom.stories.length * gameRoom.players.length;
-        const totalGuessesReceived = gameRoom.stories.reduce((total, story) => 
-            total + Object.keys(story.guesses).length, 0);
-        
-        if (totalGuessesReceived >= totalGuessesNeeded) {
-            calculateTruthTalesResults(roomCode);
+        try {
+            const gameRoom = gameRooms.get(roomCode);
+            
+            if (!gameRoom || gameRoom.gameType !== GAME_TYPES.TRUTH_TALES) {
+                socket.emit('error', { message: 'Invalid room or game type' });
+                return;
+            }
+            
+            if (gameRoom.phase !== TRUTH_GAME_PHASES.STORY_GUESSING) {
+                socket.emit('error', { message: 'Cannot submit guess at this time' });
+                return;
+            }
+            
+            const story = gameRoom.stories.find(s => s.id === storyId);
+            if (story) {
+                story.guesses[socket.id] = guessedAuthorId;
+            }
+            
+            socket.emit('guessSubmitted');
+            
+            // Check if all players have guessed for all stories
+            const totalGuessesNeeded = gameRoom.stories.length * gameRoom.players.length;
+            const totalGuessesReceived = gameRoom.stories.reduce((total, story) => 
+                total + Object.keys(story.guesses).length, 0);
+            
+            if (totalGuessesReceived >= totalGuessesNeeded) {
+                calculateTruthTalesResults(roomCode);
+            }
+        } catch (error) {
+            handleSocketError('submitGuess', error);
         }
     });
 
     // Disconnect handling - unified for both games
     socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-        
-        for (const [roomCode, gameRoom] of gameRooms.entries()) {
-            const playerIndex = gameRoom.players.findIndex(p => p.id === socket.id);
+        try {
+            console.log('Client disconnected:', socket.id);
             
-            if (playerIndex !== -1) {
-                const player = gameRoom.players[playerIndex];
-                gameRoom.players.splice(playerIndex, 1);
+            for (const [roomCode, gameRoom] of gameRooms.entries()) {
+                const playerIndex = gameRoom.players.findIndex(p => p.id === socket.id);
                 
-                // Clear any timers if needed
-                if (gameRoom.gameType === GAME_TYPES.JOKE_FACTORY && gameRoom.roundData.timer) {
-                    clearTimeout(gameRoom.roundData.timer);
-                    gameRoom.roundData.timer = null;
-                }
-                
-                // Handle host reassignment
-                if (gameRoom.host === socket.id && gameRoom.players.length > 0) {
-                    gameRoom.host = gameRoom.players[0].id;
-                    gameRoom.players[0].isHost = true;
+                if (playerIndex !== -1) {
+                    const player = gameRoom.players[playerIndex];
+                    gameRoom.players.splice(playerIndex, 1);
                     
-                    io.to(roomCode).emit('hostChanged', { 
-                        newHost: gameRoom.players[0].name,
-                        players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-                    });
+                    // Clear any timers if needed
+                    if (gameRoom.gameType === GAME_TYPES.JOKE_FACTORY && gameRoom.roundData && gameRoom.roundData.timer) {
+                        clearTimeout(gameRoom.roundData.timer);
+                        gameRoom.roundData.timer = null;
+                    }
+                    
+                    // Handle host reassignment
+                    if (gameRoom.host === socket.id && gameRoom.players.length > 0) {
+                        gameRoom.host = gameRoom.players[0].id;
+                        gameRoom.players[0].isHost = true;
+                        
+                        io.to(roomCode).emit('hostChanged', { 
+                            newHost: gameRoom.players[0].name,
+                            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
+                        });
+                    }
+                    
+                    if (gameRoom.players.length === 0) {
+                        gameRooms.delete(roomCode);
+                    } else {
+                        io.to(roomCode).emit('playerLeft', { 
+                            playerName: player.name,
+                            players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
+                        });
+                    }
+                    
+                    console.log(`Player ${player.name} left ${gameRoom.gameType} room ${roomCode}`);
                 }
-                
-                if (gameRoom.players.length === 0) {
-                    gameRooms.delete(roomCode);
-                } else {
-                    io.to(roomCode).emit('playerLeft', { 
-                        playerName: player.name,
-                        players: gameRoom.players.map(p => ({ name: p.name, score: p.score, isHost: p.isHost }))
-                    });
-                }
-                
-                console.log(`Player ${player.name} left ${gameRoom.gameType} room ${roomCode}`);
             }
+        } catch (error) {
+            console.error('Error handling disconnect:', error);
         }
     });
 });
 
-// Start unified server
+// Enhanced error handling for the server
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Don't exit the process, just log the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit the process, just log the error
+});
+
+// Start unified server with enhanced error handling
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+
+server.listen(PORT, (error) => {
+    if (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+    
     console.log(`🎭 StandUp Showdown Platform running on port ${PORT}`);
     console.log(`🌐 Game Hub: http://localhost:${PORT}`);
     console.log(`🎤 Joke Factory: http://localhost:${PORT}/joke-factory`);
     console.log(`🕵️ Truth Tales: http://localhost:${PORT}/truth-tales`);
+    console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+    console.log(`✅ Server started successfully!`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, shutting down gracefully...');
+    server.close(() => {
+        console.log('✅ Server closed successfully');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, shutting down gracefully...');
+    server.close(() => {
+        console.log('✅ Server closed successfully');
+        process.exit(0);
+    });
 });
